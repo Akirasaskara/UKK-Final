@@ -1,0 +1,2242 @@
+openapi: 3.0.3
+info:
+  title: Smart Space Booking API
+  version: 1.0.0
+  description: |
+    Kontrak 50 operasi UKK Paket B. Semua data bisnis tenant-scoped.
+    x-maker-key dan x-app-key adalah alias; jika keduanya hadir nilainya harus sama.
+    Kontrak ini sengaja memperketat upload menjadi bearer-only, melindungi maker/list,
+    menggunakan QR opaque tanpa app key, dan mempertahankan body array collection dengan
+    metadata pagination pada X-Page/X-Per-Page/X-Total-Count. Lihat api-contract.md untuk conflict log.
+servers:
+  - url: https://learn.smktelkom-mlg.sch.id/coworking
+    description: Base URL contoh sumber UKK
+  - url: http://localhost:3000
+    description: Development lokal
+tags:
+  - name: System
+  - name: Maker
+  - name: Auth
+  - name: Spaces
+  - name: Discounts
+  - name: Reservations
+  - name: Admin Profile
+  - name: Admin Members
+  - name: Admin Spaces
+  - name: Admin Discounts
+  - name: Admin Reservations
+  - name: Reports
+  - name: Uploads
+paths:
+  /:
+    get:
+      tags: [System]
+      operationId: getApiRoot
+      summary: Status API dan petunjuk penggunaan
+      security: []
+      responses:
+        '200':
+          description: API online
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RootResponse'
+              example:
+                status: true
+                statusCode: 200
+                message: Berhasil memproses permintaan
+                data:
+                  name: Coworking Space Backend API - UKK RPL Paket B
+                  version: 1.0.0
+                  status: online
+                  swagger_docs: /docs
+                  description: Backend Smart Space Booking
+                  documentation_links:
+                    swagger: https://api.example.test/docs
+                    swagger_json: https://api.example.test/docs-json
+                timestamp: '2026-08-27T08:34:46.977Z'
+        '500': { $ref: '#/components/responses/InternalError' }
+  /health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Liveness server
+      security: []
+      responses:
+        '200':
+          description: Proses hidup
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/maker/register:
+    post:
+      tags: [Maker]
+      operationId: registerMaker
+      summary: Registrasi App Maker dan generate app key
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterMakerDto' }
+      responses:
+        '201':
+          description: Maker dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MakerAuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/maker/login:
+    post:
+      tags: [Maker]
+      operationId: loginMaker
+      summary: Login App Maker
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginMakerDto' }
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MakerAuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/maker/me:
+    get:
+      tags: [Maker]
+      operationId: getCurrentMaker
+      summary: Profil App Maker saat ini
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profil maker
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MakerProfileResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/maker/stats:
+    get:
+      tags: [Maker]
+      operationId: getMakerStats
+      summary: Statistik data tenant App Maker
+      security:
+        - bearerAuth: []
+        - makerKey: []
+        - appKey: []
+      responses:
+        '200':
+          description: Statistik tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MakerStatsResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/maker/list:
+    get:
+      tags: [Maker]
+      operationId: listMakersForExaminer
+      summary: Daftar App Maker untuk Guru/Penguji
+      description: Ekstensi keamanan; sumber menyebut publik, kontrak ini mewajibkan bearer Guru/Penguji dan meredaksi credential.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Daftar maker teredaksi
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MakerListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/auth/register/member:
+    post:
+      tags: [Auth]
+      operationId: registerMember
+      summary: Registrasi member dalam tenant
+      security:
+        - makerKey: []
+        - appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterMemberDto' }
+      responses:
+        '201':
+          description: Member dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterMemberAuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/auth/register/admin-space:
+    post:
+      tags: [Auth]
+      operationId: registerAdminSpace
+      summary: Registrasi admin dan profil coworking
+      security:
+        - makerKey: []
+        - appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterAdminSpaceDto' }
+      responses:
+        '201':
+          description: Admin dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterAdminAuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginUser
+      summary: Login member atau admin dalam tenant
+      security:
+        - makerKey: []
+        - appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginDto' }
+      responses:
+        '200':
+          description: Login berhasil; profil role terkait dapat null/absent sesuai data sumber dan toleransi frontend
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginUserAuthResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/auth/profile:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUserProfile
+      summary: Profil user login
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Profil user; hanya profil role terkait yang wajib, profil lain dapat null/absent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfileResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/spaces/types:
+    get:
+      tags: [Spaces]
+      operationId: listSpaceTypes
+      summary: Daftar tipe space
+      security:
+        - makerKey: []
+        - appKey: []
+      responses:
+        '200':
+          description: Tiga tipe space
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceTypeListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/spaces/availability:
+    get:
+      tags: [Spaces]
+      operationId: checkSpaceAvailability
+      summary: Cek availability advisory
+      security:
+        - makerKey: []
+        - appKey: []
+      parameters:
+        - name: id_space
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/PositiveId' }
+        - name: tanggal
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/DateOnly' }
+        - name: jam_mulai
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/TimeHHmm' }
+        - name: durasi_jam
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Hasil availability
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/spaces:
+    get:
+      tags: [Spaces]
+      operationId: listPublicSpaces
+      summary: Katalog space tenant
+      security:
+        - makerKey: []
+        - appKey: []
+      parameters:
+        - name: tipe
+          in: query
+          schema: { $ref: '#/components/schemas/SpaceType' }
+        - name: search
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Daftar space
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/spaces/{id}:
+    get:
+      tags: [Spaces]
+      operationId: getPublicSpaceById
+      summary: Detail space
+      security:
+        - makerKey: []
+        - appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Detail space
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/diskon/active:
+    get:
+      tags: [Discounts]
+      operationId: listActiveDiscounts
+      summary: Daftar promo aktif
+      security:
+        - makerKey: []
+        - appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Promo aktif
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/diskon/check:
+    post:
+      tags: [Discounts]
+      operationId: checkDiscountCode
+      summary: Validasi kode promo
+      security:
+        - makerKey: []
+        - appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CheckPromoDto' }
+      responses:
+        '200':
+          description: Promo valid
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountCheckResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/diskon/{id}:
+    get:
+      tags: [Discounts]
+      operationId: getPublicDiscountById
+      summary: Detail diskon
+      security:
+        - makerKey: []
+        - appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Detail diskon
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/reservasi:
+    post:
+      tags: [Reservations]
+      operationId: createReservation
+      summary: Membuat reservasi member secara atomik
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateReservationDto' }
+      responses:
+        '201':
+          description: Reservasi dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/reservasi/my:
+    get:
+      tags: [Reservations]
+      operationId: listMyReservations
+      summary: Daftar reservasi member sendiri
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Reservasi sendiri
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationSummaryListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/reservasi/my/history:
+    get:
+      tags: [Reservations]
+      operationId: getMyReservationHistory
+      summary: Histori reservasi member per bulan
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Month' }
+        - { $ref: '#/components/parameters/Year' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Histori bulanan; data.items tetap array source-compatible
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationHistoryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/reservasi/{id}/e-ticket:
+    get:
+      tags: [Reservations]
+      operationId: getReservationETicket
+      summary: E-ticket reservasi dan inspeksi tiket sebelum check-in
+      description: QR memakai token opaque/signed dan tidak memuat app key seperti contoh sumber. Jalur scan/validate wajib menginspeksi e-ticket ini dalam scope admin/member yang sah, lalu admin memanggil EP-044 menggunakan id reservasi yang cocok; endpoint QR verify khusus tetap optional.
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: E-ticket
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ETicketResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/reservasi/{id}:
+    get:
+      tags: [Reservations]
+      operationId: getReservationById
+      summary: Detail reservasi untuk pemilik atau admin owner
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Detail reservasi
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/reservasi/{id}/cancel:
+    patch:
+      tags: [Reservations]
+      operationId: cancelMyReservation
+      summary: Membatalkan reservasi member
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Reservasi dibatalkan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationStatusResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/profile:
+    get:
+      tags: [Admin Profile]
+      operationId: getAdminCoworkingProfile
+      summary: Profil coworking admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Profil owner
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Admin Profile]
+      operationId: updateAdminCoworkingProfile
+      summary: Update profil coworking admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCoworkingProfileDto' }
+      responses:
+        '200':
+          description: Profil diperbarui
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/members:
+    get:
+      tags: [Admin Members]
+      operationId: listAdminMembers
+      summary: Daftar member tenant
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Daftar member
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Admin Members]
+      operationId: createAdminMember
+      summary: Tambah member oleh admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMemberAdminDto' }
+      responses:
+        '201':
+          description: Member dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/members/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/IdPath' }
+    get:
+      tags: [Admin Members]
+      operationId: getAdminMemberById
+      summary: Detail member
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Detail member
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Admin Members]
+      operationId: updateAdminMember
+      summary: Update member
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMemberAdminDto' }
+      responses:
+        '200':
+          description: Member diperbarui
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemberResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Admin Members]
+      operationId: deleteAdminMember
+      summary: Arsipkan/hapus member tanpa merusak histori
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Member diarsipkan atau dihapus
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeleteResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/spaces:
+    get:
+      tags: [Admin Spaces]
+      operationId: listAdminSpaces
+      summary: Daftar space milik admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Daftar space admin
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Admin Spaces]
+      operationId: createAdminSpace
+      summary: Tambah space
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSpaceDto' }
+      responses:
+        '201':
+          description: Space dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/spaces/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/IdPath' }
+    get:
+      tags: [Admin Spaces]
+      operationId: getAdminSpaceById
+      summary: Detail space milik admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Detail space
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Admin Spaces]
+      operationId: updateAdminSpace
+      summary: Update space milik admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSpaceDto' }
+      responses:
+        '200':
+          description: Space diperbarui
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpaceResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Admin Spaces]
+      operationId: deleteAdminSpace
+      summary: Arsipkan/hapus space tanpa merusak histori
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Space diarsipkan atau dihapus
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeleteResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/diskon:
+    get:
+      tags: [Admin Discounts]
+      operationId: listAdminDiscounts
+      summary: Daftar semua promo admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Daftar diskon
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Admin Discounts]
+      operationId: createAdminDiscount
+      summary: Tambah promo
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiscountDto' }
+      responses:
+        '201':
+          description: Diskon dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/diskon/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/IdPath' }
+    get:
+      tags: [Admin Discounts]
+      operationId: getAdminDiscountById
+      summary: Detail promo admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Detail diskon
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [Admin Discounts]
+      operationId: updateAdminDiscount
+      summary: Update promo admin
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiscountDto' }
+      responses:
+        '200':
+          description: Diskon diperbarui
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiscountResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [Admin Discounts]
+      operationId: deleteAdminDiscount
+      summary: Arsipkan/hapus promo tanpa merusak histori
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      responses:
+        '200':
+          description: Diskon diarsipkan atau dihapus
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeleteResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/reservasi:
+    get:
+      tags: [Admin Reservations]
+      operationId: listAdminReservations
+      summary: Daftar dan filter reservasi owner
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Month' }
+        - { $ref: '#/components/parameters/Year' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ReservationStatus' }
+        - name: id_space
+          in: query
+          schema: { $ref: '#/components/schemas/PositiveId' }
+        - name: tanggal
+          in: query
+          schema: { $ref: '#/components/schemas/DateOnly' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Limit' }
+      responses:
+        '200':
+          description: Reservasi owner
+          headers:
+            X-Page: { $ref: '#/components/headers/XPage' }
+            X-Per-Page: { $ref: '#/components/headers/XPerPage' }
+            X-Total-Count: { $ref: '#/components/headers/XTotalCount' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminReservationListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/reservasi/{id}/status:
+    patch:
+      tags: [Admin Reservations]
+      operationId: updateAdminReservationStatus
+      summary: Konfirmasi atau batalkan reservasi
+      description: Enum sumber dipertahankan, tetapi aktif dan selesai hanya dicapai melalui endpoint check-in/check-out.
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateReservationStatusDto' }
+      responses:
+        '200':
+          description: Status diperbarui
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationStatusResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/reservasi/{id}/check-in:
+    post:
+      tags: [Admin Reservations]
+      operationId: checkInAdminReservation
+      summary: Check-in reservasi disetujui setelah inspeksi e-ticket EP-022
+      description: Inspeksi tiket mendahului operasi ini, tetapi authorization, ownership, dan state tetap diverifikasi ulang server-side.
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Check-in berhasil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckInResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/reservasi/{id}/check-out:
+    post:
+      tags: [Admin Reservations]
+      operationId: checkOutAdminReservation
+      summary: Check-out reservasi aktif
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/IdPath' }
+      responses:
+        '200':
+          description: Check-out berhasil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckOutResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/reports/monthly:
+    get:
+      tags: [Reports]
+      operationId: getAdminMonthlyReport
+      summary: Rekap bulanan dan distribusi per tipe
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Month' }
+        - { $ref: '#/components/parameters/Year' }
+      responses:
+        '200':
+          description: Laporan bulanan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MonthlyReportResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/admin/reports/income:
+    get:
+      tags: [Reports]
+      operationId: getAdminIncomeReport
+      summary: Alias ringkas pendapatan bulanan
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      parameters:
+        - { $ref: '#/components/parameters/Month' }
+        - { $ref: '#/components/parameters/Year' }
+      responses:
+        '200':
+          description: Pendapatan bersih bulanan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncomeReportResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/upload/image:
+    post:
+      tags: [Uploads]
+      operationId: uploadGeneralImage
+      summary: Upload gambar umum
+      description: Konflik sumber diselesaikan dengan bearer wajib untuk member/admin.
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ImageUploadDto' }
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '201':
+          description: File tersimpan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GeneralUploadResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/upload/spaces:
+    post:
+      tags: [Uploads]
+      operationId: uploadSpaceImage
+      summary: Upload foto space oleh admin
+      description: Konflik sumber diselesaikan dengan bearer admin wajib.
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ImageUploadDto' }
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '201':
+          description: Foto space tersimpan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleUploadResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/upload/members:
+    post:
+      tags: [Uploads]
+      operationId: uploadMemberImage
+      summary: Upload foto member oleh member/admin
+      description: Konflik sumber diselesaikan dengan bearer wajib dan ownership saat foto di-attach.
+      security:
+        - bearerAuth: []
+          makerKey: []
+        - bearerAuth: []
+          appKey: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/ImageUploadDto' }
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '201':
+          description: Foto member tersimpan
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SimpleUploadResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT App Maker, member, admin_space, atau Guru/Penguji sesuai endpoint.
+    makerKey:
+      type: apiKey
+      in: header
+      name: x-maker-key
+      description: Tenant key utama.
+    appKey:
+      type: apiKey
+      in: header
+      name: x-app-key
+      description: Alias kompatibilitas untuk x-maker-key; bila keduanya ada harus sama.
+  headers:
+    XPage:
+      description: Nomor halaman efektif (1-based).
+      schema: { type: integer, minimum: 1 }
+    XPerPage:
+      description: Batas efektif item per halaman.
+      schema: { type: integer, minimum: 1, maximum: 100 }
+    XTotalCount:
+      description: Jumlah total item yang cocok sebelum pagination.
+      schema: { type: integer, minimum: 0 }
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/PositiveId' }
+    Page:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Month:
+      name: month
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 12 }
+    Year:
+      name: year
+      in: query
+      required: false
+      schema: { type: integer, minimum: 2000, maximum: 2100 }
+  responses:
+    BadRequest:
+      description: Input/header tidak valid atau aturan bisnis dasar gagal
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example: { status: false, statusCode: 400, message: Permintaan tidak valid, error: Bad Request, timestamp: '2026-08-27T08:00:00.000Z' }
+    Unauthorized:
+      description: Credential hilang atau invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Role/ownership/state tidak mengizinkan
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource tidak ada atau disamarkan karena scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Duplicate, overlap, stale write, atau transisi ilegal
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    PayloadTooLarge:
+      description: File melebihi 5 MiB
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    TooManyRequests:
+      description: Rate limit terlampaui
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+          description: Detik sebelum mencoba kembali
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    InternalError:
+      description: Kegagalan internal tanpa stack/SQL/secret
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    PositiveId:
+      type: integer
+      format: int64
+      minimum: 1
+      example: 1
+    Money:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Nominal integer Rupiah (IDR)
+      example: 25000
+    DateOnly:
+      type: string
+      format: date
+      example: '2026-08-30'
+    TimeHHmm:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+      example: '09:00'
+    SpaceType:
+      type: string
+      enum: [desk, meeting_room, private_office]
+    UserRole:
+      type: string
+      enum: [member, admin_space]
+    ReservationStatus:
+      type: string
+      enum: [belum_dikonfirm, disetujui, aktif, selesai, dibatalkan]
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [status, statusCode, message, error, timestamp]
+      properties:
+        status: { type: boolean, enum: [false] }
+        statusCode: { type: integer, enum: [400, 401, 403, 404, 409, 413, 429, 500] }
+        message: { type: string }
+        error: { type: string }
+        timestamp: { type: string, format: date-time }
+    RootData:
+      type: object
+      additionalProperties: false
+      required: [name, version, status, swagger_docs, description, documentation_links]
+      properties:
+        name: { type: string }
+        version: { type: string }
+        status: { type: string, enum: [online] }
+        swagger_docs: { type: string }
+        description: { type: string }
+        documentation_links:
+          type: object
+          additionalProperties: false
+          required: [swagger, swagger_json]
+          properties:
+            swagger: { type: string, format: uri }
+            swagger_json: { type: string, format: uri }
+    RootResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/RootData' }
+    HealthResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              additionalProperties: false
+              required: [status, timestamp]
+              properties:
+                status: { type: string, enum: [ok] }
+                timestamp: { type: string, format: date-time }
+    SuccessBase:
+      type: object
+      required: [status, statusCode, message, timestamp]
+      properties:
+        status: { type: boolean, enum: [true] }
+        statusCode: { type: integer, enum: [200, 201] }
+        message: { type: string }
+        timestamp: { type: string, format: date-time }
+    RegisterMakerDto:
+      type: object
+      additionalProperties: false
+      required: [name, username, email, password]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200, example: Budi Santoso }
+        username: { type: string, minLength: 1, maxLength: 100, example: budisantoso }
+        email: { type: string, format: email, maxLength: 254, example: budi@smk.sch.id }
+        password: { type: string, format: password, minLength: 6, maxLength: 128, writeOnly: true, example: Password123! }
+    LoginMakerDto:
+      type: object
+      additionalProperties: false
+      required: [usernameOrEmail, password]
+      properties:
+        usernameOrEmail: { type: string, minLength: 1, maxLength: 254, example: budisantoso }
+        password: { type: string, format: password, minLength: 1, maxLength: 128, writeOnly: true, example: Password123! }
+    Maker:
+      type: object
+      additionalProperties: false
+      required: [id, name, username, email, app_key, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        name: { type: string }
+        username: { type: string }
+        email: { type: string, format: email }
+        app_key: { type: string, pattern: '^mk_[A-Za-z0-9_]+$' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    MakerAuth:
+      allOf:
+        - { $ref: '#/components/schemas/Maker' }
+        - type: object
+          required: [access_token]
+          properties:
+            access_token: { type: string, readOnly: true }
+    MakerAuthResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/MakerAuth' }
+    MakerProfileResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Maker' }
+    MakerStats:
+      type: object
+      additionalProperties: false
+      required: [total_members, total_spaces, total_diskon, total_reservasi, total_pendapatan]
+      properties:
+        total_members: { type: integer, minimum: 0 }
+        total_spaces: { type: integer, minimum: 0 }
+        total_diskon: { type: integer, minimum: 0 }
+        total_reservasi: { type: integer, minimum: 0 }
+        total_pendapatan: { $ref: '#/components/schemas/Money' }
+    MakerStatsResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/MakerStats' }
+    MakerRedacted:
+      type: object
+      additionalProperties: false
+      required: [id, name, username, email_masked, app_key_masked, created_at]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        name: { type: string }
+        username: { type: string }
+        email_masked: { type: string, example: b***@smk.sch.id }
+        app_key_masked: { type: string, example: mk_****6e0 }
+        created_at: { type: string, format: date-time }
+    MakerListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/MakerRedacted' }
+    RegisterMemberDto:
+      type: object
+      additionalProperties: false
+      required: [username, password, nama_member, instansi, alamat, telp]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 100, example: johndoe }
+        password: { type: string, format: password, minLength: 6, maxLength: 128, writeOnly: true, example: Secret123! }
+        nama_member: { type: string, minLength: 1, maxLength: 200, example: John Doe }
+        instansi: { type: string, minLength: 1, maxLength: 200, example: Universitas Indonesia }
+        alamat: { type: string, minLength: 1, maxLength: 1000, example: Jl. Sudirman No. 123 }
+        telp: { type: string, minLength: 3, maxLength: 32, example: '081234567890' }
+        foto: { type: string, minLength: 1, maxLength: 512, nullable: true, example: member_john.jpg }
+    RegisterAdminSpaceDto:
+      type: object
+      additionalProperties: false
+      required: [username, password, nama_coworking, nama_pemilik, telp]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 100, example: admin_space1 }
+        password: { type: string, format: password, minLength: 6, maxLength: 128, writeOnly: true, example: Admin123! }
+        nama_coworking: { type: string, minLength: 1, maxLength: 200, example: Moklet Hub Coworking }
+        nama_pemilik: { type: string, minLength: 1, maxLength: 200, example: Ahmad Bidin }
+        telp: { type: string, minLength: 3, maxLength: 32, example: '081298765432' }
+        alamat: { type: string, minLength: 1, maxLength: 1000, nullable: true, description: Ekstensi kebutuhan profil. }
+        deskripsi_fasilitas: { type: string, minLength: 1, maxLength: 4000, nullable: true, description: Ekstensi kebutuhan profil. }
+    LoginDto:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 100, example: johndoe }
+        password: { type: string, format: password, minLength: 1, maxLength: 128, writeOnly: true, example: Secret123! }
+    Member:
+      type: object
+      additionalProperties: false
+      required: [id, nama_member, instansi, alamat, telp]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_member: { type: string }
+        instansi: { type: string }
+        alamat: { type: string }
+        telp: { type: string }
+        foto: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    Owner:
+      type: object
+      additionalProperties: false
+      required: [id, nama_coworking, nama_pemilik, telp]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_coworking: { type: string }
+        nama_pemilik: { type: string }
+        telp: { type: string }
+        alamat: { type: string, nullable: true }
+        deskripsi_fasilitas: { type: string, nullable: true }
+    UserAuthBase:
+      type: object
+      additionalProperties: false
+      required: [id, username, role, access_token]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        username: { type: string }
+        role: { $ref: '#/components/schemas/UserRole' }
+        maker_id:
+          allOf: [{ $ref: '#/components/schemas/PositiveId' }]
+          description: Source-compatible optional field; frontend must tolerate absence.
+        member: { type: object, allOf: [{ $ref: '#/components/schemas/Member' }], nullable: true }
+        space_owner: { type: object, allOf: [{ $ref: '#/components/schemas/Owner' }], nullable: true }
+        access_token: { type: string, readOnly: true }
+    RegisterMemberAuth:
+      allOf:
+        - { $ref: '#/components/schemas/UserAuthBase' }
+        - type: object
+          required: [member]
+          properties:
+            role: { type: string, enum: [member] }
+            member: { $ref: '#/components/schemas/Member' }
+    RegisterAdminAuth:
+      allOf:
+        - { $ref: '#/components/schemas/UserAuthBase' }
+        - type: object
+          required: [space_owner]
+          properties:
+            role: { type: string, enum: [admin_space] }
+            space_owner: { $ref: '#/components/schemas/Owner' }
+    RegisterMemberAuthResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/RegisterMemberAuth' }
+    RegisterAdminAuthResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/RegisterAdminAuth' }
+    LoginUserAuthResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/UserAuthBase' }
+    UserProfile:
+      type: object
+      additionalProperties: false
+      required: [id, username, role]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        username: { type: string }
+        role: { $ref: '#/components/schemas/UserRole' }
+        maker_id:
+          allOf: [{ $ref: '#/components/schemas/PositiveId' }]
+          description: Optional compatibility field.
+        member: { type: object, allOf: [{ $ref: '#/components/schemas/Member' }], nullable: true, description: Required by business invariant for member role; may be absent/null in source-compatible payloads. }
+        space_owner: { type: object, allOf: [{ $ref: '#/components/schemas/Owner' }], nullable: true, description: Required by business invariant for admin_space role; may be absent/null in source-compatible payloads. }
+    UserProfileResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/UserProfile' }
+    SpaceTypeItem:
+      type: object
+      additionalProperties: false
+      required: [tipe, label, deskripsi]
+      properties:
+        tipe: { $ref: '#/components/schemas/SpaceType' }
+        label: { type: string }
+        deskripsi: { type: string }
+    SpaceTypeListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              minItems: 3
+              maxItems: 3
+              items: { $ref: '#/components/schemas/SpaceTypeItem' }
+    OwnerSummary:
+      type: object
+      additionalProperties: false
+      required: [nama_coworking, nama_pemilik, telp]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_coworking: { type: string }
+        nama_pemilik: { type: string }
+        telp: { type: string }
+    Space:
+      type: object
+      additionalProperties: false
+      required: [id, nama_space, harga_per_jam, tipe, kapasitas, deskripsi, id_owner]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_space: { type: string }
+        harga_per_jam: { $ref: '#/components/schemas/Money' }
+        tipe: { $ref: '#/components/schemas/SpaceType' }
+        kapasitas: { type: integer, minimum: 1 }
+        foto: { type: string, nullable: true }
+        deskripsi: { type: string }
+        id_owner: { $ref: '#/components/schemas/PositiveId' }
+        owner: { $ref: '#/components/schemas/OwnerSummary' }
+        foto_url: { type: string, format: uri, nullable: true }
+    SpaceResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Space' }
+    SpaceListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/Space' }
+    Availability:
+      type: object
+      additionalProperties: false
+      required: [available, id_space, nama_space, tanggal, jam_mulai, jam_selesai, durasi_jam, harga_per_jam, estimasi_total]
+      properties:
+        available: { type: boolean }
+        id_space: { $ref: '#/components/schemas/PositiveId' }
+        nama_space: { type: string }
+        tanggal: { $ref: '#/components/schemas/DateOnly' }
+        jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+        jam_selesai: { $ref: '#/components/schemas/TimeHHmm' }
+        durasi_jam: { type: integer, minimum: 1 }
+        harga_per_jam: { $ref: '#/components/schemas/Money' }
+        estimasi_total: { $ref: '#/components/schemas/Money' }
+    AvailabilityResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Availability' }
+    Discount:
+      type: object
+      additionalProperties: false
+      required: [id, nama_diskon, persentase_diskon, tanggal_awal, tanggal_akhir]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_diskon: { type: string, pattern: '^[A-Z0-9_-]+$', example: DISKONHEMAT20 }
+        persentase_diskon: { type: integer, minimum: 1, maximum: 100 }
+        tanggal_awal: { type: string, format: date-time }
+        tanggal_akhir: { type: string, format: date-time }
+    DiscountResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Discount' }
+    DiscountListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/Discount' }
+    CheckPromoDto:
+      type: object
+      additionalProperties: false
+      required: [nama_diskon]
+      properties:
+        nama_diskon: { type: string, minLength: 1, maxLength: 100, example: DISKONHEMAT20 }
+    DiscountCheck:
+      allOf:
+        - { $ref: '#/components/schemas/Discount' }
+        - type: object
+          required: [is_active]
+          properties:
+            is_active: { type: boolean, enum: [true] }
+    DiscountCheckResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/DiscountCheck' }
+    CreateReservationDto:
+      type: object
+      additionalProperties: false
+      required: [id_space, tanggal_reservasi, jam_mulai, durasi_jam]
+      properties:
+        id_space: { $ref: '#/components/schemas/PositiveId' }
+        tanggal_reservasi: { $ref: '#/components/schemas/DateOnly' }
+        jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+        durasi_jam: { type: integer, minimum: 1, example: 3 }
+        id_diskon: { type: integer, format: int64, minimum: 1, nullable: true }
+        kode_promo: { type: string, minLength: 1, maxLength: 100, nullable: true, example: DISKONHEMAT20 }
+    Reservation:
+      type: object
+      additionalProperties: false
+      required: [id, kode_booking, id_member, id_space, tanggal_reservasi, jam_mulai, jam_selesai, durasi_jam, harga_per_jam, total_harga_awal, potongan_diskon, total_bayar, status]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        kode_booking: { type: string, example: BOOK-20260830-0012 }
+        id_member: { $ref: '#/components/schemas/PositiveId' }
+        id_space: { $ref: '#/components/schemas/PositiveId' }
+        id_diskon: { type: integer, format: int64, minimum: 1, nullable: true }
+        tanggal_reservasi: { $ref: '#/components/schemas/DateOnly' }
+        jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+        jam_selesai: { $ref: '#/components/schemas/TimeHHmm' }
+        durasi_jam: { type: integer, minimum: 1 }
+        harga_per_jam: { $ref: '#/components/schemas/Money' }
+        total_harga_awal: { $ref: '#/components/schemas/Money' }
+        potongan_diskon: { $ref: '#/components/schemas/Money' }
+        total_bayar: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        created_at: { type: string, format: date-time }
+    ReservationResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Reservation' }
+    SpaceSummary:
+      type: object
+      additionalProperties: false
+      required: [id, nama_space, tipe]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_space: { type: string }
+        tipe: { $ref: '#/components/schemas/SpaceType' }
+        harga_per_jam: { $ref: '#/components/schemas/Money' }
+    ReservationSummary:
+      type: object
+      additionalProperties: false
+      required: [id, kode_booking, tanggal_reservasi, jam_mulai, jam_selesai, durasi_jam, total_bayar, status, space]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        kode_booking: { type: string }
+        tanggal_reservasi: { $ref: '#/components/schemas/DateOnly' }
+        jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+        jam_selesai: { $ref: '#/components/schemas/TimeHHmm' }
+        durasi_jam: { type: integer, minimum: 1 }
+        total_bayar: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        space: { $ref: '#/components/schemas/SpaceSummary' }
+    ReservationSummaryListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/ReservationSummary' }
+    HistoryItem:
+      type: object
+      additionalProperties: false
+      required: [id, kode_booking, tanggal_reservasi, jam_mulai, jam_selesai, durasi_jam, total_bayar, status, space_name]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        kode_booking: { type: string }
+        tanggal_reservasi: { $ref: '#/components/schemas/DateOnly' }
+        jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+        jam_selesai: { $ref: '#/components/schemas/TimeHHmm' }
+        durasi_jam: { type: integer, minimum: 1 }
+        total_bayar: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        space_name: { type: string }
+    ReservationHistory:
+      type: object
+      additionalProperties: false
+      required: [month, year, total_reservasi, total_pengeluaran, items]
+      properties:
+        month: { type: integer, minimum: 1, maximum: 12 }
+        year: { type: integer, minimum: 2000, maximum: 2100 }
+        total_reservasi: { type: integer, minimum: 0 }
+        total_pengeluaran: { $ref: '#/components/schemas/Money' }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/HistoryItem' }
+    ReservationHistoryResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/ReservationHistory' }
+    ETicket:
+      type: object
+      additionalProperties: false
+      required: [e_ticket_number, kode_booking, coworking_space, member, space, jadwal, rincian_pembayaran, status_reservasi, qr_code_payload]
+      properties:
+        e_ticket_number: { type: string, example: TICKET-MOKLET-20260830-0012 }
+        kode_booking: { type: string }
+        coworking_space:
+          type: object
+          additionalProperties: false
+          required: [nama, telepon]
+          properties:
+            nama: { type: string }
+            telepon: { type: string }
+        member:
+          type: object
+          additionalProperties: false
+          required: [nama, instansi, telp]
+          properties:
+            nama: { type: string }
+            instansi: { type: string }
+            telp: { type: string }
+        space:
+          type: object
+          additionalProperties: false
+          required: [nama, tipe, harga_per_jam]
+          properties:
+            nama: { type: string }
+            tipe: { type: string }
+            harga_per_jam: { $ref: '#/components/schemas/Money' }
+        jadwal:
+          type: object
+          additionalProperties: false
+          required: [tanggal, jam_mulai, jam_selesai, durasi]
+          properties:
+            tanggal: { $ref: '#/components/schemas/DateOnly' }
+            jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+            jam_selesai: { $ref: '#/components/schemas/TimeHHmm' }
+            durasi: { type: string, example: 3 Jam }
+        rincian_pembayaran:
+          type: object
+          additionalProperties: false
+          required: [tarif_kotor, diskon_promo, potongan, total_dibayar]
+          properties:
+            tarif_kotor: { $ref: '#/components/schemas/Money' }
+            diskon_promo: { type: string, nullable: true }
+            potongan: { $ref: '#/components/schemas/Money' }
+            total_dibayar: { $ref: '#/components/schemas/Money' }
+        status_reservasi: { $ref: '#/components/schemas/ReservationStatus' }
+        qr_code_payload:
+          type: string
+          pattern: '^qr_[A-Za-z0-9_-]{20,}$'
+          description: Token opaque/signed; tidak boleh berisi app key, JWT, atau PII.
+    ETicketResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/ETicket' }
+    ReservationMemberSummary:
+      type: object
+      additionalProperties: false
+      required: [nama_member, telp]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        nama_member: { type: string }
+        telp: { type: string }
+    ReservationDetail:
+      allOf:
+        - { $ref: '#/components/schemas/Reservation' }
+        - type: object
+          required: [member, space]
+          properties:
+            member: { $ref: '#/components/schemas/ReservationMemberSummary' }
+            space: { $ref: '#/components/schemas/SpaceSummary' }
+    ReservationDetailResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/ReservationDetail' }
+    ReservationStatusData:
+      type: object
+      additionalProperties: false
+      required: [id, status, updated_at]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        updated_at: { type: string, format: date-time }
+    ReservationStatusResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/ReservationStatusData' }
+    OwnerResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Owner' }
+    UpdateCoworkingProfileDto:
+      type: object
+      additionalProperties: false
+      required: [nama_coworking, nama_pemilik, telp]
+      properties:
+        nama_coworking: { type: string, minLength: 1, maxLength: 200 }
+        nama_pemilik: { type: string, minLength: 1, maxLength: 200 }
+        telp: { type: string, minLength: 3, maxLength: 32 }
+        alamat: { type: string, minLength: 1, maxLength: 1000, nullable: true, description: Ekstensi backward-compatible. }
+        deskripsi_fasilitas: { type: string, minLength: 1, maxLength: 4000, nullable: true, description: Ekstensi backward-compatible. }
+    MemberResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/Member' }
+    MemberListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/Member' }
+    CreateMemberAdminDto:
+      allOf:
+        - { $ref: '#/components/schemas/RegisterMemberDto' }
+    UpdateMemberAdminDto:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nama_member: { type: string, minLength: 1, maxLength: 200 }
+        instansi: { type: string, minLength: 1, maxLength: 200 }
+        alamat: { type: string, minLength: 1, maxLength: 1000 }
+        telp: { type: string, minLength: 3, maxLength: 32 }
+        password: { type: string, format: password, minLength: 6, maxLength: 128, writeOnly: true }
+        foto: { type: string, minLength: 1, maxLength: 512, nullable: true }
+    DeleteData:
+      type: object
+      additionalProperties: false
+      required: [id, deleted]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        deleted: { type: boolean, enum: [true] }
+    DeleteResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/DeleteData' }
+    CreateSpaceDto:
+      type: object
+      additionalProperties: false
+      required: [nama_space, harga_per_jam, tipe, kapasitas, deskripsi]
+      properties:
+        nama_space: { type: string, minLength: 1, maxLength: 200, example: Personal Desk Alpha 01 }
+        harga_per_jam: { $ref: '#/components/schemas/Money' }
+        tipe: { $ref: '#/components/schemas/SpaceType' }
+        kapasitas: { type: integer, minimum: 1, example: 1 }
+        deskripsi: { type: string, minLength: 1, maxLength: 4000 }
+        foto: { type: string, minLength: 1, maxLength: 512, nullable: true }
+    UpdateSpaceDto:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nama_space: { type: string, minLength: 1, maxLength: 200 }
+        harga_per_jam: { $ref: '#/components/schemas/Money' }
+        tipe: { $ref: '#/components/schemas/SpaceType' }
+        kapasitas: { type: integer, minimum: 1 }
+        deskripsi: { type: string, minLength: 1, maxLength: 4000 }
+        foto: { type: string, minLength: 1, maxLength: 512, nullable: true }
+    CreateDiscountDto:
+      type: object
+      additionalProperties: false
+      required: [nama_diskon, persentase_diskon, tanggal_awal, tanggal_akhir]
+      properties:
+        nama_diskon: { type: string, minLength: 1, maxLength: 100, pattern: '^[A-Za-z0-9_-]+$', example: PROMOAGUSTUS }
+        persentase_diskon: { type: integer, minimum: 1, maximum: 100, example: 20 }
+        tanggal_awal: { type: string, format: date-time, example: '2026-08-01T00:00:00Z' }
+        tanggal_akhir: { type: string, format: date-time, example: '2026-08-31T23:59:59Z' }
+    UpdateDiscountDto:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        nama_diskon: { type: string, minLength: 1, maxLength: 100, pattern: '^[A-Za-z0-9_-]+$' }
+        persentase_diskon: { type: integer, minimum: 1, maximum: 100 }
+        tanggal_awal: { type: string, format: date-time }
+        tanggal_akhir: { type: string, format: date-time }
+    AdminReservation:
+      type: object
+      additionalProperties: false
+      required: [id, kode_booking, tanggal_reservasi, jam_mulai, jam_selesai, durasi_jam, total_harga_awal, potongan_diskon, total_bayar, status, member, space]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        kode_booking: { type: string }
+        tanggal_reservasi: { $ref: '#/components/schemas/DateOnly' }
+        jam_mulai: { $ref: '#/components/schemas/TimeHHmm' }
+        jam_selesai: { $ref: '#/components/schemas/TimeHHmm' }
+        durasi_jam: { type: integer, minimum: 1 }
+        total_harga_awal: { $ref: '#/components/schemas/Money' }
+        potongan_diskon: { $ref: '#/components/schemas/Money' }
+        total_bayar: { $ref: '#/components/schemas/Money' }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        member: { $ref: '#/components/schemas/ReservationMemberSummary' }
+        space: { $ref: '#/components/schemas/SpaceSummary' }
+    AdminReservationListResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              maxItems: 100
+              items: { $ref: '#/components/schemas/AdminReservation' }
+    UpdateReservationStatusDto:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/ReservationStatus'
+      description: Aktif/selesai dipertahankan pada enum sumber tetapi ditolak di endpoint ini; gunakan check-in/check-out.
+    CheckInData:
+      type: object
+      additionalProperties: false
+      required: [id, status, check_in_time]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        status: { type: string, enum: [aktif] }
+        check_in_time: { type: string, format: date-time }
+    CheckInResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/CheckInData' }
+    CheckOutData:
+      type: object
+      additionalProperties: false
+      required: [id, status, check_out_time]
+      properties:
+        id: { $ref: '#/components/schemas/PositiveId' }
+        status: { type: string, enum: [selesai] }
+        check_out_time: { type: string, format: date-time }
+    CheckOutResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/CheckOutData' }
+    IncomeBySpaceType:
+      type: object
+      additionalProperties: false
+      required: [tipe, label, total_booking, total_jam, total_pendapatan]
+      properties:
+        tipe: { $ref: '#/components/schemas/SpaceType' }
+        label: { type: string }
+        total_booking: { type: integer, minimum: 0 }
+        total_jam: { type: integer, minimum: 0 }
+        total_pendapatan: { $ref: '#/components/schemas/Money' }
+    MonthlyReport:
+      type: object
+      additionalProperties: false
+      required: [month, year, total_transaksi, total_jam_terpakai, estimasi_pendapatan_kotor, total_potongan_diskon, realisasi_pendapatan_bersih, rincian_per_tipe_space]
+      properties:
+        month: { type: integer, minimum: 1, maximum: 12 }
+        year: { type: integer, minimum: 2000, maximum: 2100 }
+        total_transaksi: { type: integer, minimum: 0 }
+        total_jam_terpakai: { type: integer, minimum: 0 }
+        estimasi_pendapatan_kotor: { $ref: '#/components/schemas/Money' }
+        total_potongan_diskon: { $ref: '#/components/schemas/Money' }
+        realisasi_pendapatan_bersih:
+          allOf: [{ $ref: '#/components/schemas/Money' }]
+          description: Total reservasi selesai; proxy penyelesaian layanan, bukan bukti pembayaran.
+        rincian_per_tipe_space:
+          type: array
+          maxItems: 3
+          items: { $ref: '#/components/schemas/IncomeBySpaceType' }
+    MonthlyReportResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/MonthlyReport' }
+    IncomeReport:
+      type: object
+      additionalProperties: false
+      required: [month, year, realisasi_pendapatan_bersih]
+      properties:
+        month: { type: integer, minimum: 1, maximum: 12 }
+        year: { type: integer, minimum: 2000, maximum: 2100 }
+        realisasi_pendapatan_bersih: { $ref: '#/components/schemas/Money' }
+    IncomeReportResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/IncomeReport' }
+    ImageUploadDto:
+      type: object
+      additionalProperties: false
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Satu JPEG/PNG/WebP maksimum 5 MiB; MIME, extension, dan magic bytes wajib cocok.
+    GeneralUploadData:
+      type: object
+      additionalProperties: false
+      required: [filename, original_name, mimetype, size, url]
+      properties:
+        filename: { type: string, example: 1787799592972-544446318.jpeg }
+        original_name: { type: string, example: banner.jpg }
+        mimetype: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+        url: { type: string, format: uri }
+    SimpleUploadData:
+      type: object
+      additionalProperties: false
+      required: [filename, url]
+      properties:
+        filename: { type: string, example: meeting_room_alpha.jpg }
+        url: { type: string, format: uri }
+    GeneralUploadResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/GeneralUploadData' }
+    SimpleUploadResponse:
+      allOf:
+        - { $ref: '#/components/schemas/SuccessBase' }
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/SimpleUploadData' }

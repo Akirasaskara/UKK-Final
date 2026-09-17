@@ -1,0 +1,248 @@
+// prisma/schema.prisma
+// Standalone Smart Space Booking Database Schema (Prisma 7 + MySQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  username     String    @unique(map: "uq_users_username") @db.VarChar(100)
+  passwordHash String    @map("password") @db.VarChar(255)
+  role         String    @db.VarChar(20)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  archivedAt   DateTime? @map("archived_at") @db.DateTime(3)
+
+  member             Member?
+  spaceOwner         SpaceOwner?
+  idempotencyRecords IdempotencyRequest[]
+  mediaUploads       MediaUpload[]
+
+  @@unique([id, role], map: "uq_users_id_role")
+  @@index([role, archivedAt, id], map: "idx_users_role_archived_id")
+  @@map("users")
+}
+
+model Member {
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idUser     BigInt    @unique(map: "uq_member_id_user") @map("id_user") @db.UnsignedBigInt
+  roleGuard  String    @default("member") @map("role_guard") @db.VarChar(20)
+  namaMember String    @map("nama_member") @db.VarChar(200)
+  instansi   String    @db.VarChar(200)
+  alamat     String    @db.Text
+  telp       String    @db.VarChar(32)
+  foto       String?   @db.VarChar(512)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  archivedAt DateTime? @map("archived_at") @db.DateTime(3)
+
+  user         User          @relation(fields: [idUser, roleGuard], references: [id, role], onDelete: Restrict, onUpdate: Restrict, map: "fk_member_user_role")
+  reservations Reservation[]
+
+  @@unique([idUser, roleGuard], map: "uq_member_id_user_role")
+  @@index([archivedAt, namaMember, id], map: "idx_member_archived_name_id")
+  @@index([namaMember, id], map: "idx_member_name_id")
+  @@index([instansi, id], map: "idx_member_instansi_id")
+  @@index([telp, id], map: "idx_member_telp_id")
+  @@map("member")
+}
+
+model SpaceOwner {
+  id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idUser             BigInt    @unique(map: "uq_space_owner_id_user") @map("id_user") @db.UnsignedBigInt
+  roleGuard          String    @default("admin_space") @map("role_guard") @db.VarChar(20)
+  namaCoworking      String    @map("nama_coworking") @db.VarChar(200)
+  namaPemilik        String    @map("nama_pemilik") @db.VarChar(200)
+  telp               String    @db.VarChar(32)
+  alamat             String?   @db.Text
+  deskripsiFasilitas String?   @map("deskripsi_fasilitas") @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  archivedAt         DateTime? @map("archived_at") @db.DateTime(3)
+
+  user         User          @relation(fields: [idUser, roleGuard], references: [id, role], onDelete: Restrict, onUpdate: Restrict, map: "fk_space_owner_user_role")
+  spaces       Space[]
+  discounts    Discount[]
+  reservations Reservation[]
+  mediaUploads MediaUpload[]
+
+  @@unique([idUser, roleGuard], map: "uq_space_owner_id_user_role")
+  @@map("space_owner")
+}
+
+model Space {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idOwner     BigInt    @map("id_owner") @db.UnsignedBigInt
+  namaSpace   String    @map("nama_space") @db.VarChar(200)
+  hargaPerJam BigInt    @map("harga_per_jam") @db.UnsignedBigInt
+  tipe        String    @db.VarChar(30)
+  kapasitas   Int       @db.UnsignedInt
+  foto        String?   @db.VarChar(512)
+  deskripsi   String    @db.Text
+  version     Int       @default(1) @db.UnsignedInt
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  archivedAt  DateTime? @map("archived_at") @db.DateTime(3)
+
+  owner        SpaceOwner          @relation(fields: [idOwner], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_space_owner")
+  reservations Reservation[]
+  details      ReservationDetail[]
+
+  @@unique([id, idOwner], map: "uq_space_id_owner")
+  @@index([archivedAt, tipe, id], map: "idx_space_archived_tipe_id")
+  @@index([idOwner, archivedAt, id], map: "idx_space_owner_archived_id")
+  @@map("space")
+}
+
+model Discount {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idOwner          BigInt    @map("id_owner") @db.UnsignedBigInt
+  namaDiskon       String    @map("nama_diskon") @db.VarChar(100)
+  persentaseDiskon Int       @map("persentase_diskon") @db.UnsignedTinyInt
+  tanggalAwal      DateTime  @map("tanggal_awal") @db.DateTime(3)
+  tanggalAkhir     DateTime  @map("tanggal_akhir") @db.DateTime(3)
+  version          Int       @default(1) @db.UnsignedInt
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  archivedAt       DateTime? @map("archived_at") @db.DateTime(3)
+
+  owner   SpaceOwner          @relation(fields: [idOwner], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_discount_owner")
+  details ReservationDetail[]
+
+  @@unique([idOwner, namaDiskon], map: "uq_diskon_owner_nama")
+  @@unique([id, idOwner], map: "uq_diskon_id_owner")
+  @@index([idOwner, archivedAt, tanggalAwal, tanggalAkhir, id], map: "idx_diskon_owner_active_window")
+  @@index([archivedAt, tanggalAwal, tanggalAkhir, id], map: "idx_diskon_active_window")
+  @@map("diskon")
+}
+
+model Reservation {
+  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idOwner          BigInt    @map("id_owner") @db.UnsignedBigInt
+  idMember         BigInt    @map("id_member") @db.UnsignedBigInt
+  idSpace          BigInt    @map("id_space") @db.UnsignedBigInt
+  kodeBooking      String    @unique(map: "uq_reservasi_kode_booking") @map("kode_booking") @db.VarChar(64)
+  tanggalReservasi DateTime  @map("tanggal_reservasi") @db.Date
+  jamMulai         DateTime  @map("jam_mulai") @db.Time(0)
+  jamSelesai       DateTime  @map("jam_selesai") @db.Time(0)
+  durasiJam        Int       @map("durasi_jam") @db.UnsignedSmallInt
+  status           String    @default("belum_dikonfirm") @db.VarChar(30)
+  checkInAt        DateTime? @map("check_in_at") @db.DateTime(3)
+  checkOutAt       DateTime? @map("check_out_at") @db.DateTime(3)
+  version          Int       @default(1) @db.UnsignedInt
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  owner    SpaceOwner         @relation(fields: [idOwner], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_reservasi_owner")
+  member   Member             @relation(fields: [idMember], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_reservasi_member")
+  space    Space              @relation(fields: [idSpace, idOwner], references: [id, idOwner], onDelete: Restrict, onUpdate: Restrict, map: "fk_reservasi_space_owner")
+  detail   ReservationDetail?
+  qrRecord ReservationQr?
+
+  @@unique([id, idOwner, idSpace], map: "uq_reservasi_id_owner_space")
+  @@index([idSpace, tanggalReservasi, status, jamMulai, jamSelesai, id], map: "idx_reservasi_overlap_lookup")
+  @@index([idOwner, idMember, id], map: "idx_reservasi_owner_member_scope")
+  @@index([idMember, tanggalReservasi, id], map: "idx_reservasi_member_history")
+  @@index([idOwner, tanggalReservasi, status, id], map: "idx_reservasi_owner_date_status")
+  @@index([idOwner, status, updatedAt, id], map: "idx_reservasi_owner_ops_queue")
+  @@map("reservasi")
+}
+
+model ReservationDetail {
+  id                     BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  idOwner                BigInt   @map("id_owner") @db.UnsignedBigInt
+  idReservasi            BigInt   @unique(map: "uq_detail_reservasi_id_reservasi") @map("id_reservasi") @db.UnsignedBigInt
+  idSpace                BigInt   @map("id_space") @db.UnsignedBigInt
+  idDiskon               BigInt?  @map("id_diskon") @db.UnsignedBigInt
+  hargaPerJam            BigInt   @map("harga_per_jam") @db.UnsignedBigInt
+  totalHargaAwal         BigInt   @map("total_harga_awal") @db.UnsignedBigInt
+  potonganDiskon         BigInt   @default(0) @map("potongan_diskon") @db.UnsignedBigInt
+  totalHarga             BigInt   @map("total_harga") @db.UnsignedBigInt
+  persentaseDiskon       Int?     @map("persentase_diskon") @db.UnsignedTinyInt
+  namaDiskonSnapshot     String?  @map("nama_diskon_snapshot") @db.VarChar(100)
+  namaSpaceSnapshot      String   @map("nama_space_snapshot") @db.VarChar(200)
+  tipeSpaceSnapshot      String   @map("tipe_space_snapshot") @db.VarChar(30)
+  namaCoworkingSnapshot  String   @map("nama_coworking_snapshot") @db.VarChar(200)
+  telpCoworkingSnapshot  String   @map("telp_coworking_snapshot") @db.VarChar(32)
+  namaMemberSnapshot     String   @map("nama_member_snapshot") @db.VarChar(200)
+  instansiMemberSnapshot String   @map("instansi_member_snapshot") @db.VarChar(200)
+  telpMemberSnapshot     String   @map("telp_member_snapshot") @db.VarChar(32)
+  createdAt              DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  reservation Reservation @relation(fields: [idReservasi, idOwner, idSpace], references: [id, idOwner, idSpace], onDelete: Restrict, onUpdate: Restrict, map: "fk_detail_reservasi_composite")
+  space       Space       @relation(fields: [idSpace, idOwner], references: [id, idOwner], onDelete: Restrict, onUpdate: Restrict, map: "fk_detail_space_composite")
+  discount    Discount?   @relation(fields: [idDiskon, idOwner], references: [id, idOwner], onDelete: Restrict, onUpdate: Restrict, map: "fk_detail_discount_composite")
+
+  @@unique([idReservasi, idOwner, idSpace], map: "uq_detail_reservasi_composite")
+  @@index([idSpace, idReservasi], map: "idx_detail_space_reservasi")
+  @@index([idOwner, tipeSpaceSnapshot, idReservasi], map: "idx_detail_owner_report_tipe")
+  @@map("detail_reservasi")
+}
+
+model ReservationQr {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  idOwner     BigInt    @map("id_owner") @db.UnsignedBigInt
+  idReservasi BigInt    @unique(map: "uq_reservation_qr_id_reservasi") @map("id_reservasi") @db.UnsignedBigInt
+  tokenHash   String    @unique(map: "uq_reservation_qr_token_hash") @map("token_hash") @db.Char(64)
+  expiresAt   DateTime  @map("expires_at") @db.DateTime(3)
+  usedAt      DateTime? @map("used_at") @db.DateTime(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  reservation Reservation @relation(fields: [idReservasi], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_reservation_qr_reservasi")
+
+  @@map("reservation_qr")
+}
+
+model IdempotencyRequest {
+  id              BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  principalUserId BigInt   @map("principal_user_id") @db.UnsignedBigInt
+  route           String   @db.VarChar(120)
+  keyHash         String   @map("key_hash") @db.Char(64)
+  requestHash     String   @map("request_hash") @db.Char(64)
+  state           String   @default("pending") @db.VarChar(20)
+  responseStatus  Int?     @map("response_status") @db.UnsignedSmallInt
+  responseBody    Json?    @map("response_body")
+  reservationId   BigInt?  @map("reservation_id") @db.UnsignedBigInt
+  expiresAt       DateTime @map("expires_at") @db.DateTime(3)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  user User @relation(fields: [principalUserId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_idempotency_user")
+
+  @@unique([principalUserId, route, keyHash], map: "uq_idempotency_principal_route_key")
+  @@index([expiresAt, id], map: "idx_idempotency_cleanup")
+  @@map("idempotency_request")
+}
+
+model MediaUpload {
+  id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  uploaderUserId     BigInt    @map("uploader_user_id") @db.UnsignedBigInt
+  ownerId            BigInt?   @map("owner_id") @db.UnsignedBigInt
+  purpose            String    @db.VarChar(30)
+  objectKey          String    @unique(map: "uq_media_upload_object_key") @map("object_key") @db.VarChar(512)
+  originalName       String    @map("original_name") @db.VarChar(255)
+  mimeType           String    @map("mime_type") @db.VarChar(100)
+  sizeBytes          BigInt    @map("size_bytes") @db.UnsignedBigInt
+  checksumSha256     String    @map("checksum_sha256") @db.Char(64)
+  status             String    @default("staged") @db.VarChar(20)
+  attachedEntityType String?   @map("attached_entity_type") @db.VarChar(20)
+  attachedEntityId   BigInt?   @map("attached_entity_id") @db.UnsignedBigInt
+  expiresAt          DateTime  @map("expires_at") @db.DateTime(3)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  deletedAt          DateTime? @map("deleted_at") @db.DateTime(3)
+
+  uploader User        @relation(fields: [uploaderUserId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_media_uploader")
+  owner    SpaceOwner? @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_media_owner")
+
+  @@index([status, expiresAt, id], map: "idx_media_upload_cleanup")
+  @@index([attachedEntityType, attachedEntityId, status], map: "idx_media_upload_attachment")
+  @@map("media_upload")
+}

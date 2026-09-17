@@ -1,0 +1,196 @@
+{
+  "info": {
+    "_postman_id": "smart-space-booking-api-collection",
+    "name": "Smart Space Booking API",
+    "description": "Postman Collection untuk Backend Smart Space Booking (Paket B)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System & Health",
+      "item": [
+        {
+          "name": "Root Information",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/", "host": ["{{baseUrl}}"], "path": [""] }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Admin Space",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_moklet\",\n  \"password\": \"Password123!\",\n  \"nama_coworking\": \"Moklet Hub Coworking Space\",\n  \"nama_pemilik\": \"Ahmad Bidin\",\n  \"telp\": \"081298765432\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register/admin-space", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register", "admin-space"] }
+          }
+        },
+        {
+          "name": "Register Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"budi_santoso\",\n  \"password\": \"Password123!\",\n  \"nama_member\": \"Budi Santoso\",\n  \"instansi\": \"SMK Telkom Malang\",\n  \"alamat\": \"Jl. Danau Ranau No. 1 Malang\",\n  \"telp\": \"081234567890\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/register/member", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register", "member"] }
+          }
+        },
+        {
+          "name": "Login Admin Space",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin_moklet\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"budi_santoso\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spaces & Workstations",
+      "item": [
+        {
+          "name": "Get Space Types",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/spaces/types", "host": ["{{baseUrl}}"], "path": ["api", "spaces", "types"] }
+          }
+        },
+        {
+          "name": "Public Browse Spaces",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/spaces?tipe=desk&search=Alpha", "host": ["{{baseUrl}}"], "path": ["api", "spaces"], "query": [{ "key": "tipe", "value": "desk" }, { "key": "search", "value": "Alpha" }] }
+          }
+        },
+        {
+          "name": "Check Space Availability",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/spaces/availability?id_space=1&tanggal=2026-09-30&jam_mulai=09:00&durasi_jam=3", "host": ["{{baseUrl}}"], "path": ["api", "spaces", "availability"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "Create Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{memberToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_space\": 1,\n  \"tanggal_reservasi\": \"2026-09-30\",\n  \"jam_mulai\": \"09:00\",\n  \"durasi_jam\": 3,\n  \"id_diskon\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservasi", "host": ["{{baseUrl}}"], "path": ["api", "reservasi"] }
+          }
+        },
+        {
+          "name": "Get My Reservations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservasi/my", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "my"] }
+          }
+        },
+        {
+          "name": "Get E-Ticket Digital",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reservasi/1/e-ticket", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "1", "e-ticket"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Operations",
+      "item": [
+        {
+          "name": "Verify QR Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"VERIFY-RESERVASI-1-BOOK-20260930-A1B2C3\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/verify-qr", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "verify-qr"] }
+          }
+        },
+        {
+          "name": "Check-In Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/1/check-in", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "1", "check-in"] }
+          }
+        },
+        {
+          "name": "Check-Out Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/1/check-out", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "1", "check-out"] }
+          }
+        },
+        {
+          "name": "Monthly Income Report",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/reports/monthly?month=9&year=2026", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reports", "monthly"] }
+          }
+        }
+      ]
+    }
+  ]
+}
