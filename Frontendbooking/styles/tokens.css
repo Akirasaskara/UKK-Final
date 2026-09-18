@@ -1,0 +1,92 @@
+/* Primitive color tokens */
+:root {
+  --teal-950: #0D292C;
+  --teal-900: #123B3F;
+  --teal-800: #194B50;
+  --teal-700: #246168;
+  --teal-200: #B9D2D2;
+  --teal-100: #DCEAEA;
+  --teal-50: #F0F6F5;
+
+  --gold-700: #80662E;
+  --gold-500: #B89A55;
+  --gold-200: #E2D4AE;
+  --gold-50: #FAF6EA;
+
+  --neutral-0: #FFFFFF;
+  --neutral-25: #FCFCFA;
+  --neutral-50: #F6F7F5;
+  --neutral-200: #E2E5E1;
+  --neutral-500: #68716D;
+  --neutral-700: #37423E;
+  --neutral-950: #101714;
+
+  --green-50: #ECF8F1;
+  --green-700: #197044;
+
+  --amber-50: #FFF7E6;
+  --amber-800: #855A12;
+
+  --red-50: #FFF0EE;
+  --red-700: #A9342A;
+
+  --cyan-50: #EEF6F7;
+  --cyan-700: #245F69;
+}
+
+/* Semantic tokens (light-only specification per DESIGN.md) */
+:root {
+  --bg-canvas: var(--neutral-25);
+  --bg-surface: var(--neutral-0);
+  --bg-subtle: var(--neutral-50);
+  --bg-brand: var(--teal-900);
+
+  --text-primary: var(--neutral-950);
+  --text-secondary: var(--neutral-700);
+  --text-muted: var(--neutral-500);
+  --text-on-brand: var(--neutral-0);
+
+  --border-default: var(--neutral-200);
+  --border-strong: var(--neutral-500);
+  --border-selected: var(--teal-700);
+
+  --focus-ring: #A67C24;
+  --focus-offset: var(--neutral-0);
+
+  --action-primary: var(--teal-900);
+  --action-primary-hover: var(--teal-800);
+  --action-primary-active: var(--teal-950);
+  --action-secondary: var(--teal-700);
+
+  --status-success-bg: var(--green-50);
+  --status-success-text: var(--green-700);
+  --status-warning-bg: var(--amber-50);
+  --status-warning-text: var(--amber-800);
+  --status-danger-bg: var(--red-50);
+  --status-danger-text: var(--red-700);
+  --status-info-bg: var(--cyan-50);
+  --status-info-text: var(--cyan-700);
+
+  --disabled-bg: var(--neutral-50);
+  --disabled-text: var(--neutral-500);
+  --disabled-border: var(--neutral-200);
+
+  --overlay-scrim: rgba(16, 23, 20, 0.66);
+
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-modal: 20px;
+  --radius-badge: 9999px;
+
+  --shadow-card: 0 8px 24px rgba(18, 59, 63, 0.10);
+  --shadow-raised: 0 12px 32px rgba(16, 23, 20, 0.16);
+  --shadow-modal: 0 24px 56px rgba(16, 23, 20, 0.24);
+
+  --z-base: 0;
+  --z-sticky: 20;
+  --z-dropdown: 40;
+  --z-backdrop: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+  --z-tooltip: 90;
+}

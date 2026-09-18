@@ -129,7 +129,7 @@ Label status reservasi harus tampil persis seperti tabel berikut; nama enum wire
 
 ### 3.4 Typography
 
-Family tokens: `--font-display: "DM Serif Display", Georgia, "Times New Roman", serif`; `--font-ui: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`; `--font-mono: ui-monospace, SFMono-Regular, Consolas, monospace`. Font disarankan self-host untuk privasi, performa, dan kontrol layout shift.
+Family tokens: `--font-display: "DM Serif Display", Georgia, "Times New Roman", serif`; `--font-ui: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`; `--font-mono: ui-monospace, SFMono-Regular, Consolas, monospace`. Font disarankan self-host untuk privasi, performa, dan kontrol layout shift.
 
 | Token | Mobile size/line-height | Desktop size/line-height | Family/weight | Letter spacing | Penggunaan |
 |---|---:|---:|---|---:|---|
@@ -630,7 +630,7 @@ infrastructure/
 **Visual dan responsif**
 
 - [ ] Dark teal/muted gold konsisten dan kontras tervalidasi tooling.
-- [ ] DM Serif Display dan Inter termuat tanpa layout shift yang tidak dapat diterima.
+- [ ] DM Serif Display dan Plus Jakarta Sans termuat tanpa layout shift yang tidak dapat diterima.
 - [ ] Tidak ada body horizontal overflow pada viewport uji.
 - [ ] Tabel/card, sticky action, image ratio, skeleton, long text, IDR besar, dan keyboard virtual diuji.
 
@@ -808,7 +808,7 @@ flowchart TD
 |---|---|---|---|
 | Merek Smart Space Booking | identitas produk tunggal | copy, logo, metadata, dan ticket konsisten | **REQUIRED** |
 | Dark teal + muted gold | karakter tenang/premium dan berbeda dari biru generik | seluruh token dan contrast QA mengikuti palet | **DESIGN DECISION** |
-| DM Serif Display + Inter | hierarki editorial publik dan keterbacaan UI operasional | self-host/subsetting dan font fallback diperlukan | **DESIGN DECISION** |
+| DM Serif Display + Plus Jakarta Sans | hierarki editorial publik dan keterbacaan UI operasional | self-host/subsetting dan font fallback diperlukan | **DESIGN DECISION** |
 | Next.js App Router + Server Component default | mengurangi JS dan menjaga secret boundary | interaktivitas diisolasi ke Client Components | **REQUIRED / DESIGN DECISION** |
 | NestJS + Prisma + MySQL RDS | target stack backend/persistence | locking overlap MySQL harus dibuktikan | **REQUIRED** |
 | S3 private by default | pemisahan compute/media dan kontrol akses | URL policy, metadata, lifecycle, dan cleanup eksplisit | **REQUIRED** |
