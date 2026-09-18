@@ -8,9 +8,11 @@ import {
   HttpStatus,
   Inject,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadService } from './upload.service.js';
+import type { UploadedFileDto } from './upload.service.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
@@ -24,39 +26,51 @@ const uploadOptions = {
   },
 };
 
+@ApiTags('Media & Uploads (S3 / Local Storage)')
+@ApiBearerAuth()
 @Controller('api/upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UploadController {
   constructor(@Inject(UploadService) private uploadService: UploadService) {}
 
+  @ApiOperation({ summary: 'Upload Gambar Media Umum (Member & Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Gambar (.jpg/.png/.webp, maksimum 5MB)' } } } })
+  @ApiResponse({ status: 201, description: 'File umum berhasil diupload dan staged menuju storage' })
   @Roles('member', 'admin_space')
   @Post('image')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file', uploadOptions))
   uploadGeneral(
-    @UploadedFile() file: any,
+    @UploadedFile() file: UploadedFileDto,
     @CurrentUser() user: any,
   ) {
     return this.uploadService.uploadGeneral(file, user);
   }
 
+  @ApiOperation({ summary: 'Upload Gambar / Foto Space Pekerjaan (Admin Owner)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Gambar fasilitas space (.jpg/.png/.webp, 5MB)' } } } })
   @Roles('admin_space')
   @Post('spaces')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file', uploadOptions))
   uploadSpace(
-    @UploadedFile() file: any,
+    @UploadedFile() file: UploadedFileDto,
     @CurrentUser() user: any,
   ) {
     return this.uploadService.uploadSpace(file, user);
   }
 
+  @ApiOperation({ summary: 'Upload Avatar Foto Profil (Member & Admin)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Foto portrait (.jpg/.png/.webp, 5MB)' } } } })
   @Roles('member', 'admin_space')
   @Post('members')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file', uploadOptions))
   uploadMember(
-    @UploadedFile() file: any,
+    @UploadedFile() file: UploadedFileDto,
     @CurrentUser() user: any,
   ) {
     return this.uploadService.uploadMember(file, user);

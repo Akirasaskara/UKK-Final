@@ -1,8 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from './common/decorators/public.decorator.js';
 
+@ApiTags('System & Health')
 @Controller()
 export class AppController {
+  @ApiOperation({ summary: 'Informasi Root API Project UKK' })
+  @ApiResponse({ status: 200, description: 'Menampilkan links Swagger dan status Service' })
   @Public()
   @Get()
   getRoot() {
@@ -22,6 +26,8 @@ export class AppController {
     };
   }
 
+  @ApiOperation({ summary: 'Server Liveness Health Check (Ops)' })
+  @ApiResponse({ status: 200, description: 'Database and NestJS up and running' })
   @Public()
   @Get('health')
   getHealth() {

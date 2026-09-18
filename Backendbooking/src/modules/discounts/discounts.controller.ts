@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Inject,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { DiscountsService } from './discounts.service.js';
 import { CheckPromoDto } from './dto/discount.dto.js';
 import { CreateDiskonDto, UpdateDiskonDto } from './dto/create-discount.dto.js';
@@ -21,16 +22,21 @@ import { Roles } from '../../common/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 
+@ApiTags('Promotions & Discounts')
 @Controller('api')
 export class DiscountsController {
   constructor(@Inject(DiscountsService) private discountsService: DiscountsService) {}
 
+  @ApiOperation({ summary: 'Daftar Promo Diskon Aktif Semua Coworking (Publik)' })
   @Public()
   @Get('diskon/active')
   findActive() {
     return this.discountsService.findActive();
   }
 
+  @ApiOperation({ summary: 'Cek Validitas Kode Promo (Publik)' })
+  @ApiResponse({ status: 200, description: 'Kode promo valid' })
+  @ApiResponse({ status: 400, description: 'Kode promo invalid/expired' })
   @Public()
   @Post('diskon/check')
   @HttpCode(HttpStatus.OK)
@@ -38,12 +44,16 @@ export class DiscountsController {
     return this.discountsService.checkPromo(dto);
   }
 
+  @ApiOperation({ summary: 'Detail Promo Diskon (Publik)' })
+  @ApiParam({ name: 'id', description: 'ID Diskon', type: Number, example: 1 })
   @Public()
   @Get('diskon/:id')
   findOnePublic(@Param('id', ParseIntPipe) id: number) {
     return this.discountsService.findOnePublic(id);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lihat Semua Promo Diskon (Admin Space)' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Get('admin/diskon')
@@ -51,6 +61,9 @@ export class DiscountsController {
     return this.discountsService.findAllAdmin(user);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Tambah Promo Diskon (Admin Space)' })
+  @ApiResponse({ status: 201, description: 'Promo Diskon Baru Berhasil Dibuat' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Post('admin/diskon')
@@ -59,6 +72,8 @@ export class DiscountsController {
     return this.discountsService.createAdmin(user, dto);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Detail Promo Diskon Spesifik (Admin Space)' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Get('admin/diskon/:id')
@@ -69,6 +84,8 @@ export class DiscountsController {
     return this.discountsService.findOneAdmin(user, id);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update Promo Diskon (Admin Space)' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Put('admin/diskon/:id')
@@ -80,6 +97,8 @@ export class DiscountsController {
     return this.discountsService.updateAdmin(user, id, dto);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Arsipkan/Hapus Promo Diskon (Admin Space)' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Delete('admin/diskon/:id')

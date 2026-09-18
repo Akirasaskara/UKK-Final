@@ -10,6 +10,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
@@ -17,15 +18,22 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { PrismaService } from '../../database/prisma.service.js';
 
 export class VerifyQrDto {
+  @ApiProperty({ example: 'VERIFY-RESERVASI-1-BOOK-20260930-A1B2C3', description: 'Token e-Ticket / Payload QR' })
   token!: string;
 }
 
+@ApiTags('Admin Operations')
+@ApiBearerAuth()
 @Controller('api/admin/reservasi')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin_space')
 export class AdminQrVerifyController {
   constructor(@Inject(PrismaService) private prisma: PrismaService) {}
 
+  @ApiOperation({ summary: 'Verifikasi Token QR / E-Ticket sebelum Check-In' })
+  @ApiResponse({ status: 200, description: 'QR Code Valid dan data member/ruang tampil sebagai preview.' })
+  @ApiResponse({ status: 400, description: 'Format token QR Code tidak valid.' })
+  @ApiResponse({ status: 404, description: 'Reservasi e-Ticket bukan milik coworking Anda.' })
   @Post('verify-qr')
   @HttpCode(HttpStatus.OK)
   async verifyQr(@CurrentUser() user: any, @Body() dto: VerifyQrDto) {
