@@ -40,7 +40,7 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/spaces', label: 'Space Inventaris', icon: Building2, available: true },
   { href: '/admin/promotions', label: 'Promosi', icon: Tag, available: true },
   { href: '/admin/members', label: 'Daftar Member', icon: Users, available: true },
-  { href: '/admin/reports', label: 'Laporan Finansial', icon: BarChart3, available: false },
+  { href: '/admin/reports', label: 'Laporan Finansial', icon: BarChart3, available: true },
   { href: '/admin/profile', label: 'Profil Coworking', icon: Building, available: true },
 ];
 
