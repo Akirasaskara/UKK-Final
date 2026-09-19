@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { SpaceDetailPageContent } from '@/features/spaces/components/space-detail';
 
 export const metadata = {
@@ -11,6 +12,10 @@ export default async function SpaceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!/^[1-9]\d*$/.test(id)) {
+    notFound();
+  }
+
   const spaceId = Number.parseInt(id, 10);
 
   return (

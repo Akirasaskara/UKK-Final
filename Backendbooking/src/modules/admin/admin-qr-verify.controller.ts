@@ -11,6 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
@@ -19,6 +20,8 @@ import { PrismaService } from '../../database/prisma.service.js';
 
 export class VerifyQrDto {
   @ApiProperty({ example: 'VERIFY-RESERVASI-1-BOOK-20260930-A1B2C3', description: 'Token e-Ticket / Payload QR' })
+  @IsString({ message: 'Token QR harus berupa string' })
+  @IsNotEmpty({ message: 'Token QR wajib disertakan' })
   token!: string;
 }
 
@@ -46,12 +49,17 @@ export class AdminQrVerifyController {
     }
 
     // Format QR Token: VERIFY-RESERVASI-{id}-{kodeBooking}
-    const parts = dto.token.split('-');
+    const parts = dto.token.trim().split('-');
     if (parts.length < 4 || parts[0] !== 'VERIFY' || parts[1] !== 'RESERVASI') {
       throw new BadRequestException('Format QR Code tiket tidak valid');
     }
 
-    const resId = BigInt(parts[2]);
+    const idNumber = Number.parseInt(parts[2], 10);
+    if (!Number.isFinite(idNumber) || idNumber <= 0) {
+      throw new BadRequestException('ID Reservasi pada QR Code tidak valid');
+    }
+
+    const resId = BigInt(idNumber);
     const kodeBooking = parts.slice(3).join('-');
 
     const reservation = await this.prisma.reservation.findFirst({

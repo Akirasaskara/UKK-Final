@@ -19,16 +19,28 @@ import { formatSpaceType } from '@/lib/format/space';
 
 type Step = 1 | 2 | 3 | 4;
 
-export function BookingStepperForm({ spaceId }: { spaceId: number }) {
+type BookingStepperFormProps = {
+  spaceId: number;
+  initialTanggal?: string;
+  initialJamMulai?: string;
+  initialDurasi?: number;
+};
+
+export function BookingStepperForm({
+  spaceId,
+  initialTanggal,
+  initialJamMulai,
+  initialDurasi,
+}: BookingStepperFormProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>(1);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Form states
-  const [tanggal, setTanggal] = useState(todayStr);
-  const [jamMulai, setJamMulai] = useState('09:00');
-  const [durasiJam, setDurasiJam] = useState(2);
+  const [tanggal, setTanggal] = useState(initialTanggal || todayStr);
+  const [jamMulai, setJamMulai] = useState(initialJamMulai || '09:00');
+  const [durasiJam, setDurasiJam] = useState(initialDurasi && initialDurasi >= 1 ? initialDurasi : 2);
 
   // Availability state
   const [availResult, setAvailResult] = useState<AvailabilityResult | null>(null);
@@ -40,10 +52,11 @@ export function BookingStepperForm({ spaceId }: { spaceId: number }) {
 
   // Query space data
   const { data: space, isLoading: spaceLoading } = usePublicSpace(spaceId);
-  const { data: promotions } = useActivePromotions();
+  const { data: promotions } = useActivePromotions({ id_space: spaceId });
 
   // Create booking mutation
   const createMutation = useCreateBookingMutation();
+  const [recheckError, setRecheckError] = useState<string | null>(null);
 
   // Step 1: Cek ketersediaan
   async function handleCheckAvailability(e: React.FormEvent) {
@@ -78,9 +91,25 @@ export function BookingStepperForm({ spaceId }: { spaceId: number }) {
   const discountAmount = Math.round((basePrice * discountPercent) / 100);
   const finalTotal = Math.max(0, basePrice - discountAmount);
 
-  // Step 4: Submit booking
+  // Step 4: Submit booking dengan pre-submit recheck
   async function handleConfirmBooking() {
-    if (!availResult) return;
+    setRecheckError(null);
+
+    // Pre-submit atomic availability recheck
+    try {
+      await checkSpaceAvailability({
+        id_space: spaceId,
+        tanggal,
+        jam_mulai: jamMulai,
+        durasi_jam: durasiJam,
+      });
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? (err as { message: string }).message
+        : 'Slot waktu telah terisi oleh pengguna lain saat Anda meninjau. Silakan pilih jadwal lain.';
+      setRecheckError(msg);
+      return;
+    }
 
     try {
       const res = await createMutation.mutateAsync({
@@ -371,7 +400,20 @@ export function BookingStepperForm({ spaceId }: { spaceId: number }) {
             </p>
           </div>
 
-          {createMutation.isError ? (
+          {recheckError ? (
+            <InlineAlert title="Perubahan Ketersediaan Slot" variant="danger">
+              <p className="text-xs mt-1">{recheckError}</p>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="mt-3 inline-flex min-h-10 items-center justify-center rounded-control bg-status-danger-text px-4 py-1.5 text-xs font-semibold text-white"
+              >
+                Pilih Jadwal Ulang
+              </button>
+            </InlineAlert>
+          ) : null}
+
+          {createMutation.isError && !recheckError ? (
             <InlineAlert title="Pemesanan Gagal Diproses" variant="danger">
               <p className="text-xs mt-1">
                 {createMutation.error instanceof Error

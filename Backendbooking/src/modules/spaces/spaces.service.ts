@@ -3,19 +3,26 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
+import { STORAGE_SERVICE } from '../../infrastructure/storage/storage.module.js';
+import type { StorageService } from '../../infrastructure/storage/storage.interface.js';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
+  AdminSpaceQueryDto,
   CheckAvailabilityQueryDto,
 } from './dto/space.dto.js';
 import { calculateEndTime } from '../../common/utils/time.util.js';
 
 @Injectable()
 export class SpacesService {
-  constructor(@Inject(PrismaService) private prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private prisma: PrismaService,
+    @Inject(STORAGE_SERVICE) private storage: StorageService,
+  ) {}
 
   getTypes() {
     return [
@@ -81,7 +88,7 @@ export class SpacesService {
             telp: s.owner.telp,
           }
         : null,
-      foto_url: s.foto ? `http://localhost:3000/uploads/spaces/${s.foto}` : null,
+      foto_url: s.foto ? this.storage.getPublicUrl('spaces', s.foto) : null,
     }));
   }
 
@@ -117,9 +124,7 @@ export class SpacesService {
             telp: space.owner.telp,
           }
         : null,
-      foto_url: space.foto
-        ? `http://localhost:3000/uploads/spaces/${space.foto}`
-        : null,
+      foto_url: space.foto ? this.storage.getPublicUrl('spaces', space.foto) : null,
     };
   }
 
@@ -177,28 +182,64 @@ export class SpacesService {
     };
   }
 
-  async findAllAdmin(user: any) {
+  async findAllAdmin(user: any, query?: AdminSpaceQueryDto) {
     if (!user.spaceOwner) {
       throw new ForbiddenException('Akses hanya untuk admin space yang terdaftar');
     }
 
-    const spaces = await this.prisma.space.findMany({
-      where: {
-        idOwner: user.spaceOwner.id,
-        archivedAt: null,
-      },
-      orderBy: { id: 'asc' },
-    });
+    const where: any = {
+      idOwner: user.spaceOwner.id,
+      archivedAt: null,
+    };
 
-    return spaces.map((s) => ({
+    if (query?.tipe) {
+      where.tipe = query.tipe;
+    }
+
+    if (query?.search && query.search.trim()) {
+      where.OR = [
+        { namaSpace: { contains: query.search.trim() } },
+        { deskripsi: { contains: query.search.trim() } },
+      ];
+    }
+
+    const page = query?.page && query.page > 0 ? query.page : 1;
+    const limit = query?.limit && query.limit > 0 ? query.limit : 20;
+    const skip = (page - 1) * limit;
+
+    const [total, spaces] = await Promise.all([
+      this.prisma.space.count({ where }),
+      this.prisma.space.findMany({
+        where,
+        orderBy: { id: 'asc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const items = spaces.map((s) => ({
       id: s.id,
       nama_space: s.namaSpace,
       harga_per_jam: s.hargaPerJam,
       tipe: s.tipe,
       kapasitas: s.kapasitas,
+      deskripsi: s.deskripsi,
       foto: s.foto,
-      foto_url: s.foto ? `http://localhost:3000/uploads/spaces/${s.foto}` : null,
+      foto_url: s.foto ? this.storage.getPublicUrl('spaces', s.foto) : null,
+      version: s.version,
+      created_at: s.createdAt.toISOString(),
+      updated_at: s.updatedAt.toISOString(),
     }));
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 
   async createAdmin(user: any, dto: CreateSpaceDto) {
@@ -206,16 +247,35 @@ export class SpacesService {
       throw new ForbiddenException('Akses hanya untuk admin space yang terdaftar');
     }
 
-    const space = await this.prisma.space.create({
-      data: {
-        idOwner: user.spaceOwner.id,
-        namaSpace: dto.nama_space,
-        hargaPerJam: BigInt(dto.harga_per_jam),
-        tipe: dto.tipe,
-        kapasitas: dto.kapasitas,
-        deskripsi: dto.deskripsi,
-        foto: dto.foto || null,
-      },
+    const space = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.space.create({
+        data: {
+          idOwner: user.spaceOwner.id,
+          namaSpace: dto.nama_space.trim(),
+          hargaPerJam: BigInt(dto.harga_per_jam),
+          tipe: dto.tipe,
+          kapasitas: dto.kapasitas,
+          deskripsi: dto.deskripsi.trim(),
+          foto: dto.foto || null,
+        },
+      });
+
+      if (dto.foto) {
+        await tx.mediaUpload.updateMany({
+          where: {
+            objectKey: dto.foto,
+            ownerId: user.spaceOwner.id,
+            purpose: 'space_photo',
+          },
+          data: {
+            status: 'attached',
+            attachedEntityType: 'space',
+            attachedEntityId: created.id,
+          },
+        });
+      }
+
+      return created;
     });
 
     return {
@@ -228,7 +288,11 @@ export class SpacesService {
         kapasitas: space.kapasitas,
         deskripsi: space.deskripsi,
         foto: space.foto,
+        foto_url: space.foto ? this.storage.getPublicUrl('spaces', space.foto) : null,
         id_owner: space.idOwner,
+        version: space.version,
+        created_at: space.createdAt.toISOString(),
+        updated_at: space.updatedAt.toISOString(),
       },
     };
   }
@@ -258,6 +322,10 @@ export class SpacesService {
       kapasitas: space.kapasitas,
       deskripsi: space.deskripsi,
       foto: space.foto,
+      foto_url: space.foto ? this.storage.getPublicUrl('spaces', space.foto) : null,
+      version: space.version,
+      created_at: space.createdAt.toISOString(),
+      updated_at: space.updatedAt.toISOString(),
     };
   }
 
@@ -278,20 +346,43 @@ export class SpacesService {
       throw new NotFoundException('Space tidak ditemukan!');
     }
 
-    const updated = await this.prisma.space.update({
-      where: { id: existing.id },
-      data: {
-        namaSpace: dto.nama_space ?? existing.namaSpace,
-        hargaPerJam:
-          dto.harga_per_jam !== undefined
-            ? BigInt(dto.harga_per_jam)
-            : existing.hargaPerJam,
-        tipe: dto.tipe ?? existing.tipe,
-        kapasitas: dto.kapasitas ?? existing.kapasitas,
-        deskripsi: dto.deskripsi ?? existing.deskripsi,
-        foto: dto.foto !== undefined ? dto.foto : existing.foto,
-        version: { increment: 1 },
-      },
+    if (dto.expected_version !== undefined && dto.expected_version !== existing.version) {
+      throw new ConflictException('Data space telah diubah oleh sesi lain. Silakan muat ulang data terbaru.');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const res = await tx.space.update({
+        where: { id: existing.id },
+        data: {
+          namaSpace: dto.nama_space !== undefined ? dto.nama_space.trim() : existing.namaSpace,
+          hargaPerJam:
+            dto.harga_per_jam !== undefined
+              ? BigInt(dto.harga_per_jam)
+              : existing.hargaPerJam,
+          tipe: dto.tipe ?? existing.tipe,
+          kapasitas: dto.kapasitas ?? existing.kapasitas,
+          deskripsi: dto.deskripsi !== undefined ? dto.deskripsi.trim() : existing.deskripsi,
+          foto: dto.foto !== undefined ? dto.foto : existing.foto,
+          version: { increment: 1 },
+        },
+      });
+
+      if (dto.foto && dto.foto !== existing.foto) {
+        await tx.mediaUpload.updateMany({
+          where: {
+            objectKey: dto.foto,
+            ownerId: user.spaceOwner.id,
+            purpose: 'space_photo',
+          },
+          data: {
+            status: 'attached',
+            attachedEntityType: 'space',
+            attachedEntityId: res.id,
+          },
+        });
+      }
+
+      return res;
     });
 
     return {
@@ -303,6 +394,11 @@ export class SpacesService {
         tipe: updated.tipe,
         kapasitas: updated.kapasitas,
         deskripsi: updated.deskripsi,
+        foto: updated.foto,
+        foto_url: updated.foto ? this.storage.getPublicUrl('spaces', updated.foto) : null,
+        version: updated.version,
+        created_at: updated.createdAt.toISOString(),
+        updated_at: updated.updatedAt.toISOString(),
       },
     };
   }
@@ -326,7 +422,10 @@ export class SpacesService {
 
     await this.prisma.space.update({
       where: { id: existing.id },
-      data: { archivedAt: new Date() },
+      data: {
+        archivedAt: new Date(),
+        version: { increment: 1 },
+      },
     });
 
     return {

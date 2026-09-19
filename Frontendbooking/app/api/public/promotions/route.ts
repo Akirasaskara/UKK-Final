@@ -1,10 +1,12 @@
+import type { NextRequest } from 'next/server';
 import { fetchUpstream, UpstreamUnavailableError } from '@/lib/server/upstream';
 
-function jsonResponse(body: unknown, status = 200, maxAge = 120): Response {
+function jsonNoStore(body: unknown, status = 200): Response {
   return Response.json(body, {
     status,
     headers: {
-      'Cache-Control': `public, s-maxage=${maxAge}, stale-while-revalidate=30`,
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
     },
   });
 }
@@ -12,7 +14,7 @@ function jsonResponse(body: unknown, status = 200, maxAge = 120): Response {
 function handleGatewayError(error: unknown): Response {
   const isTimeout =
     error instanceof UpstreamUnavailableError && error.timedOut;
-  return Response.json(
+  return jsonNoStore(
     {
       status: false,
       statusCode: 503,
@@ -22,23 +24,31 @@ function handleGatewayError(error: unknown): Response {
       error: 'Service Unavailable',
       timestamp: new Date().toISOString(),
     },
-    {
-      status: 503,
-      headers: { 'Cache-Control': 'no-store' },
-    },
+    503,
   );
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
+  const searchParams = request.nextUrl.searchParams;
+  const idSpace = searchParams.get('id_space');
+
+  const upstreamParams = new URLSearchParams();
+  if (idSpace && /^[1-9]\d*$/.test(idSpace)) {
+    upstreamParams.set('id_space', idSpace);
+  }
+
+  const qs = upstreamParams.toString();
+  const path = qs ? `/api/diskon/active?${qs}` : '/api/diskon/active';
+
   try {
-    const upstreamResponse = await fetchUpstream('/api/diskon/active', {
+    const upstreamResponse = await fetchUpstream(path, {
       method: 'GET',
       headers: { Accept: 'application/json' },
     });
 
     const body = await upstreamResponse.json().catch(() => null);
     if (!upstreamResponse.ok) {
-      return Response.json(
+      return jsonNoStore(
         body ?? {
           status: false,
           statusCode: upstreamResponse.status,
@@ -46,11 +56,11 @@ export async function GET(): Promise<Response> {
           error: 'Upstream Error',
           timestamp: new Date().toISOString(),
         },
-        { status: upstreamResponse.status, headers: { 'Cache-Control': 'no-store' } },
+        upstreamResponse.status,
       );
     }
 
-    return jsonResponse(body, 200);
+    return jsonNoStore(body, 200);
   } catch (error: unknown) {
     return handleGatewayError(error);
   }

@@ -1,10 +1,11 @@
 'use client';
 
-import { Printer, ArrowLeft, QrCode as QrIcon } from 'lucide-react';
+import { Printer, ArrowLeft } from 'lucide-react';
 import { useBookingETicket } from '../hooks';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { PublicContainer } from '@/components/public/public-container';
+import { QRCodeImage } from '@/components/ui/qr-code-image';
 import { formatIdr } from '@/lib/format/currency';
 import { formatDateIndonesia } from '@/lib/format/date';
 import { formatSpaceType } from '@/lib/format/space';
@@ -99,7 +100,11 @@ export function ETicketContent({ bookingId }: { bookingId: number }) {
         <div className="flex flex-col items-center justify-center p-6 rounded-control bg-bg-subtle border border-border-default space-y-3 text-center">
           {!isCancelled ? (
             <div className="p-3 bg-white rounded-xl border border-border-default shadow-sm">
-              <QrIcon size={120} className="text-text-primary" aria-label="QR Code Kedatangan" />
+              <QRCodeImage
+                payload={ticket.qr_code_payload}
+                size={140}
+                alt={`QR Code tiket ${ticket.kode_booking}`}
+              />
             </div>
           ) : (
             <div className="p-4 rounded-control bg-[var(--red-50)] text-[var(--red-700)] text-xs font-bold">

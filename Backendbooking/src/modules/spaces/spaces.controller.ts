@@ -18,6 +18,7 @@ import { SpacesService } from './spaces.service.js';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
+  AdminSpaceQueryDto,
   CheckAvailabilityQueryDto,
 } from './dto/space.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
@@ -72,8 +73,11 @@ export class SpacesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Get('admin/spaces')
-  findAllAdmin(@CurrentUser() user: any) {
-    return this.spacesService.findAllAdmin(user);
+  findAllAdmin(
+    @CurrentUser() user: any,
+    @Query() query: AdminSpaceQueryDto,
+  ) {
+    return this.spacesService.findAllAdmin(user, query);
   }
 
   @ApiBearerAuth()

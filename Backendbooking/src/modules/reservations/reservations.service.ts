@@ -68,24 +68,46 @@ export class ReservationsService {
           );
         }
 
+        const now = new Date();
         let discountRecord: any = null;
-        if (dto.id_diskon) {
+
+        if (dto.id_diskon && dto.kode_promo) {
+          const normalizedCode = dto.kode_promo.trim().toUpperCase();
+          discountRecord = await tx.discount.findFirst({
+            where: {
+              id: BigInt(dto.id_diskon),
+              namaDiskon: normalizedCode,
+              idOwner: ownerId,
+              archivedAt: null,
+              tanggalAwal: { lte: now },
+              tanggalAkhir: { gte: now },
+            },
+          });
+          if (!discountRecord) {
+            throw new BadRequestException('Kombinasi ID diskon dan kode promo tidak valid atau sudah kedaluwarsa');
+          }
+        } else if (dto.id_diskon) {
           discountRecord = await tx.discount.findFirst({
             where: {
               id: BigInt(dto.id_diskon),
               idOwner: ownerId,
               archivedAt: null,
+              tanggalAwal: { lte: now },
+              tanggalAkhir: { gte: now },
             },
           });
           if (!discountRecord) {
             throw new BadRequestException('Diskon yang dipilih tidak valid atau sudah kedaluwarsa');
           }
         } else if (dto.kode_promo) {
+          const normalizedCode = dto.kode_promo.trim().toUpperCase();
           discountRecord = await tx.discount.findFirst({
             where: {
-              namaDiskon: dto.kode_promo,
+              namaDiskon: normalizedCode,
               idOwner: ownerId,
               archivedAt: null,
+              tanggalAwal: { lte: now },
+              tanggalAkhir: { gte: now },
             },
           });
           if (!discountRecord) {

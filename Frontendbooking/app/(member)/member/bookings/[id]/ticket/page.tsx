@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { ETicketContent } from '@/features/bookings/components/e-ticket-content';
 
 export const metadata = {
@@ -11,6 +12,10 @@ export default async function ETicketPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!/^[1-9]\d*$/.test(id)) {
+    notFound();
+  }
+
   const bookingId = Number.parseInt(id, 10);
 
   return (

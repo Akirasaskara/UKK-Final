@@ -33,9 +33,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await context.params;
-  const parsedId = Number.parseInt(id, 10);
 
-  if (!Number.isFinite(parsedId) || parsedId <= 0) {
+  if (!/^[1-9]\d*$/.test(id)) {
     return jsonNoStore(
       {
         status: false,
@@ -47,6 +46,8 @@ export async function GET(
       400,
     );
   }
+
+  const parsedId = Number.parseInt(id, 10);
 
   try {
     const upstreamResponse = await fetchUpstream(`/api/spaces/${parsedId}`, {

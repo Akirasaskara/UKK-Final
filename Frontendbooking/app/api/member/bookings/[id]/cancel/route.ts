@@ -14,8 +14,7 @@ export async function PATCH(
   if (!token) return unauthorizedSessionResponse();
 
   const { id } = await context.params;
-  const parsedId = Number.parseInt(id, 10);
-  if (!Number.isFinite(parsedId) || parsedId <= 0) {
+  if (!/^[1-9]\d*$/.test(id)) {
     return noStoreResponse(
       {
         status: false,
@@ -27,6 +26,8 @@ export async function PATCH(
       400,
     );
   }
+
+  const parsedId = Number.parseInt(id, 10);
 
   try {
     const upstreamResponse = await fetchUpstream(`/api/reservasi/${parsedId}/cancel`, {

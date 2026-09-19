@@ -46,7 +46,7 @@ paths:
                 statusCode: 200
                 message: Berhasil memproses permintaan
                 data:
-                  name: Coworking Space Backend API - UKK RPL Paket B
+                  name: Coworking Space Backend API 
                   version: 1.0.0
                   status: online
                   swagger_docs: /docs

@@ -20,6 +20,7 @@ import {
   UpdateCoworkingProfileDto,
   CreateMemberAdminDto,
   UpdateMemberAdminDto,
+  AdminMemberQueryDto,
   UpdateReservasiStatusDto,
   ReportQueryDto,
 } from './dto/admin.dto.js';
@@ -42,6 +43,12 @@ export class AdminController {
     return this.adminService.getProfile(user);
   }
 
+  @ApiOperation({ summary: 'Ringkasan Dashboard Operasional & Antrean (Admin)' })
+  @Get('dashboard')
+  getDashboardSummary(@CurrentUser() user: any) {
+    return this.adminService.getDashboardSummary(user);
+  }
+
   @ApiOperation({ summary: 'Simpan Profil Lokasi Coworking (Admin)' })
   @Put('profile')
   updateProfile(
@@ -52,13 +59,12 @@ export class AdminController {
   }
 
   @ApiOperation({ summary: 'Daftar Member yang Pernah Reservasi di Lokasi Ini (Admin)' })
-  @ApiQuery({ name: 'search', required: false, description: 'Cari Nama/Instansi/Telepon' })
   @Get('members')
   findMembers(
     @CurrentUser() user: any,
-    @Query('search') search?: string,
+    @Query() query: AdminMemberQueryDto,
   ) {
-    return this.adminService.findMembers(user, search);
+    return this.adminService.findMembers(user, query);
   }
 
   @ApiOperation({ summary: 'Buat Akun Member Pelanggan Global (Assisted Registration)' })

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,9 +33,9 @@ export function AvailabilityPanel({
   spaceId,
 }: AvailabilityPanelProps) {
   const [result, setResult] = useState<AvailabilityResult | null>(null);
+  const [lastChecked, setLastChecked] = useState<FormValues | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isStale, setIsStale] = useState(false);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -54,19 +54,17 @@ export function AvailabilityPanel({
     },
   });
 
-  const [tanggalValue, jamMulaiValue, durasiValue] = watch(['tanggal', 'jam_mulai', 'durasi_jam']);
+  const [currentTanggal, currentJamMulai, currentDurasi] = watch(['tanggal', 'jam_mulai', 'durasi_jam']);
 
-  // Tandai stale saat ada perubahan input
-  useEffect(() => {
-    if (result || errorMessage) {
-      setIsStale(true);
-    }
-  }, [tanggalValue, jamMulaiValue, durasiValue, result, errorMessage]);
+  const isStale =
+    lastChecked !== null &&
+    (currentTanggal !== lastChecked.tanggal ||
+      currentJamMulai !== lastChecked.jam_mulai ||
+      currentDurasi !== lastChecked.durasi_jam);
 
   async function onCheck(values: FormValues) {
     setIsPending(true);
     setErrorMessage(null);
-    setIsStale(false);
 
     try {
       const res = await checkSpaceAvailability({
@@ -76,9 +74,19 @@ export function AvailabilityPanel({
         durasi_jam: Number(values.durasi_jam),
       });
       setResult(res);
+      setLastChecked({
+        tanggal: values.tanggal,
+        jam_mulai: values.jam_mulai,
+        durasi_jam: Number(values.durasi_jam),
+      });
       setCheckedAt(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: unknown) {
       setResult(null);
+      setLastChecked({
+        tanggal: values.tanggal,
+        jam_mulai: values.jam_mulai,
+        durasi_jam: Number(values.durasi_jam),
+      });
       if (err && typeof err === 'object' && 'message' in err) {
         setErrorMessage((err as { message: string }).message);
       } else {
@@ -88,6 +96,10 @@ export function AvailabilityPanel({
       setIsPending(false);
     }
   }
+
+  const bookingUrl = result
+    ? `/member/bookings/new?space_id=${spaceId}&tanggal=${result.tanggal}&jam_mulai=${result.jam_mulai}&durasi_jam=${result.durasi_jam}`
+    : `/member/bookings/new?space_id=${spaceId}`;
 
   return (
     <section
@@ -217,10 +229,10 @@ export function AvailabilityPanel({
 
           <div className="pt-2">
             <Link
-              href={`/login?returnTo=${encodeURIComponent(`/spaces/${spaceId}`)}`}
+              href={`/login?returnTo=${encodeURIComponent(bookingUrl)}`}
               className="flex min-h-11 w-full items-center justify-center rounded-control bg-action-primary px-4 py-2 text-xs font-semibold text-text-on-brand hover:bg-action-primary-hover shadow-sm"
             >
-              Masuk untuk Melanjutkan Reservasi
+              Lanjut Reservasi Ruangan Ini
             </Link>
           </div>
 

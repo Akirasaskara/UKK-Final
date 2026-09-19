@@ -2,12 +2,12 @@
   "info": {
     "_postman_id": "smart-space-booking-api-collection",
     "name": "Smart Space Booking API",
-    "description": "Postman Collection untuk Backend Smart Space Booking (Paket B) - Full Example Values",
+    "description": "Postman Collection Lengkap untuk Backend Smart Space Booking (Paket B) — Mendukung Chained Testing, Environment Variables Otomatis, Contoh Data Lengkap, dan Negative Tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "System & Health",
+      "name": "00 - System & Health",
       "item": [
         {
           "name": "GET / (Root API Info)",
@@ -25,7 +25,7 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "body": "{\n  \"status\": true,\n  \"statusCode\": 200,\n  \"message\": \"Berhasil memproses permintaan\",\n  \"data\": {\n    \"name\": \"Coworking Space Backend API - UKK RPL Paket B\",\n    \"version\": \"1.0.0\",\n    \"status\": \"online\",\n    \"swagger_docs\": \"/docs\",\n    \"description\": \"Backend service untuk Smart Space Booking.\",\n    \"documentation_links\": {\n      \"swagger\": \"http://localhost:3000/docs\",\n      \"swagger_json\": \"http://localhost:3000/docs-json\"\n    }\n  },\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
+              "body": "{\n  \"status\": true,\n  \"statusCode\": 200,\n  \"message\": \"Berhasil memproses permintaan\",\n  \"data\": {\n    \"name\": \"Coworking Space Backend API\",\n    \"version\": \"1.0.0\",\n    \"status\": \"online\",\n    \"swagger_docs\": \"/docs\",\n    \"description\": \"Backend service untuk Smart Space Booking.\",\n    \"documentation_links\": {\n      \"swagger\": \"http://localhost:3000/docs\",\n      \"swagger_json\": \"http://localhost:3000/docs-json\"\n    }\n  },\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
             }
           ]
         },
@@ -52,16 +52,36 @@
       ]
     },
     {
-      "name": "Authentication",
+      "name": "01 - Authentication",
       "item": [
         {
-          "name": "POST /api/auth/register/admin-space (Register Admin Space)",
+          "name": "POST /api/auth/register/admin-space",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.access_token) {",
+                  "        pm.environment.set('adminToken', res.data.access_token);",
+                  "        pm.environment.set('adminUserId', String(res.data.id));",
+                  "        if (res.data.space_owner) {",
+                  "            pm.environment.set('ownerId', String(res.data.space_owner.id));",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_moklet\",\n  \"password\": \"Password123!\",\n  \"nama_coworking\": \"Moklet Hub Coworking Space\",\n  \"nama_pemilik\": \"Ahmad Bidin, S.Kom\",\n  \"telp\": \"081298765432\",\n  \"alamat\": \"Jl. Danau Ranau No. 1 Sawojajar, Malang\",\n  \"deskripsi_fasilitas\": \"High-Speed WiFi 100Mbps, AC Dingin, Free Flow Kopi & Teh, Musholla, Parkir Luas\"\n}"
+              "raw": "{\n  \"username\": \"admin_moklet_{{$timestamp}}\",\n  \"password\": \"Password123!\",\n  \"nama_coworking\": \"Moklet Hub Coworking Space\",\n  \"nama_pemilik\": \"Ahmad Bidin, S.Kom\",\n  \"telp\": \"081298765432\",\n  \"alamat\": \"Jl. Danau Ranau No. 1 Sawojajar, Malang\",\n  \"deskripsi_fasilitas\": \"High-Speed WiFi 100Mbps, AC Dingin, Free Flow Kopi & Teh, Musholla, Parkir Luas\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/auth/register/admin-space", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register", "admin-space"] }
           },
@@ -76,13 +96,33 @@
           ]
         },
         {
-          "name": "POST /api/auth/register/member (Register Member)",
+          "name": "POST /api/auth/register/member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.access_token) {",
+                  "        pm.environment.set('memberToken', res.data.access_token);",
+                  "        pm.environment.set('memberUserId', String(res.data.id));",
+                  "        if (res.data.member) {",
+                  "            pm.environment.set('memberId', String(res.data.member.id));",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"Password123!\",\n  \"nama_member\": \"John Doe\",\n  \"instansi\": \"Universitas Indonesia\",\n  \"alamat\": \"Jl. Sudirman No. 123, Jakarta Selatan\",\n  \"telp\": \"081234567890\",\n  \"foto\": \"member_john.jpg\"\n}"
+              "raw": "{\n  \"username\": \"member_{{$timestamp}}\",\n  \"password\": \"Password123!\",\n  \"nama_member\": \"Budi Santoso\",\n  \"instansi\": \"SMK Telkom Malang\",\n  \"alamat\": \"Jl. Danau Ranau No. 1 Malang\",\n  \"telp\": \"081234567890\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/auth/register/member", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register", "member"] }
           },
@@ -92,91 +132,123 @@
               "status": "Created",
               "code": 201,
               "_postman_previewlanguage": "json",
-              "body": "{\n  \"status\": true,\n  \"statusCode\": 201,\n  \"message\": \"Registrasi member berhasil!\",\n  \"data\": {\n    \"id\": 2,\n    \"username\": \"johndoe\",\n    \"role\": \"member\",\n    \"member\": {\n      \"id\": 1,\n      \"nama_member\": \"John Doe\",\n      \"instansi\": \"Universitas Indonesia\",\n      \"alamat\": \"Jl. Sudirman No. 123, Jakarta Selatan\",\n      \"telp\": \"081234567890\",\n      \"foto\": \"member_john.jpg\"\n    },\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n  },\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
+              "body": "{\n  \"status\": true,\n  \"statusCode\": 201,\n  \"message\": \"Registrasi member berhasil!\",\n  \"data\": {\n    \"id\": 2,\n    \"username\": \"johndoe\",\n    \"role\": \"member\",\n    \"member\": {\n      \"id\": 1,\n      \"nama_member\": \"John Doe\",\n      \"instansi\": \"Universitas Indonesia\",\n      \"alamat\": \"Jl. Sudirman No. 123, Jakarta Selatan\",\n      \"telp\": \"081234567890\",\n      \"foto\": null\n    },\n    \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n  },\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
             }
           ]
         },
         {
-          "name": "POST /api/auth/login (Login Admin Space)",
+          "name": "POST /api/auth/login (Admin Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.access_token) {",
+                  "        pm.environment.set('adminToken', res.data.access_token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"admin_moklet\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
           }
         },
         {
-          "name": "POST /api/auth/login (Login Member)",
+          "name": "POST /api/auth/login (Member Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.access_token) {",
+                  "        pm.environment.set('memberToken', res.data.access_token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"Password123!\"\n}"
+              "raw": "{\n  \"username\": \"{{memberUsername}}\",\n  \"password\": \"{{memberPassword}}\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
           }
         },
         {
-          "name": "GET /api/auth/profile (Get Profile)",
+          "name": "GET /api/auth/profile (Admin Profile)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
+          }
+        },
+        {
+          "name": "GET /api/auth/profile (Member Profile)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
             "url": { "raw": "{{baseUrl}}/api/auth/profile", "host": ["{{baseUrl}}"], "path": ["api", "auth", "profile"] }
           }
         }
       ]
     },
     {
-      "name": "Spaces & Workstations",
+      "name": "02 - Spaces & Workstations",
       "item": [
         {
-          "name": "GET /api/spaces/types (Get Types)",
+          "name": "GET /api/spaces/types",
           "request": {
             "method": "GET",
             "url": { "raw": "{{baseUrl}}/api/spaces/types", "host": ["{{baseUrl}}"], "path": ["api", "spaces", "types"] }
           }
         },
         {
-          "name": "GET /api/spaces (Public Browse Spaces)",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/spaces?tipe=desk&search=Alpha",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "spaces"],
-              "query": [
-                { "key": "tipe", "value": "desk", "description": "Filter tipe: desk, meeting_room, private_office" },
-                { "key": "search", "value": "Alpha", "description": "Cari nama space / fasilitas" }
-              ]
+          "name": "POST /api/admin/spaces (Admin Tambah Space)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.id) {",
+                  "        pm.environment.set('spaceId', String(res.data.id));",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
             }
-          }
-        },
-        {
-          "name": "GET /api/spaces/:id (Public Space Detail)",
+          ],
           "request": {
-            "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/spaces/1", "host": ["{{baseUrl}}"], "path": ["api", "spaces", "1"] }
-          }
-        },
-        {
-          "name": "GET /api/spaces/availability (Check Availability)",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/api/spaces/availability?id_space=1&tanggal=2026-09-30&jam_mulai=09:00&durasi_jam=3",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "spaces", "availability"],
-              "query": [
-                { "key": "id_space", "value": "1" },
-                { "key": "tanggal", "value": "2026-09-30" },
-                { "key": "jam_mulai", "value": "09:00" },
-                { "key": "durasi_jam", "value": "3" }
-              ]
-            }
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_space\": \"Personal Desk Alpha {{$timestamp}}\",\n  \"harga_per_jam\": 25000,\n  \"tipe\": \"desk\",\n  \"kapasitas\": 1,\n  \"deskripsi\": \"Meja ergonomis, stopkontak, WiFi 100Mbps, monitor 24 inch, free flow kopi/teh\",\n  \"foto\": \"desk_alpha_01.jpg\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admin/spaces", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces"] }
           }
         },
         {
@@ -188,26 +260,11 @@
           }
         },
         {
-          "name": "POST /api/admin/spaces (Admin Create Space)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nama_space\": \"Personal Desk Alpha 01\",\n  \"harga_per_jam\": 25000,\n  \"tipe\": \"desk\",\n  \"kapasitas\": 1,\n  \"deskripsi\": \"Meja ergonomis, colokan listrik, WiFi 100Mbps, monitor 24 inch, free flow kopi/teh\",\n  \"foto\": \"desk_alpha_01.jpg\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/admin/spaces", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces"] }
-          }
-        },
-        {
-          "name": "GET /api/admin/spaces/:id (Admin Space Detail)",
+          "name": "GET /api/admin/spaces/:id (Admin Detail Space)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/spaces/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces", "1"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/spaces/{{spaceId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces", "{{spaceId}}"] }
           }
         },
         {
@@ -220,24 +277,117 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nama_space\": \"Personal Desk Alpha 01 (Updated)\",\n  \"harga_per_jam\": 30000,\n  \"kapasitas\": 2,\n  \"deskripsi\": \"Upgrade dengan standing desk elektrik dan monitor 27 inch 4K\"\n}"
+              "raw": "{\n  \"nama_space\": \"Personal Desk Alpha Updated\",\n  \"harga_per_jam\": 30000,\n  \"kapasitas\": 2\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/admin/spaces/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces", "1"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/spaces/{{spaceId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces", "{{spaceId}}"] }
           }
         },
         {
-          "name": "DELETE /api/admin/spaces/:id (Admin Delete Space)",
+          "name": "GET /api/spaces (Public Browse Spaces)",
           "request": {
-            "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/spaces/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces", "1"] }
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/spaces?tipe=desk&search=Alpha",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "spaces"],
+              "query": [
+                { "key": "tipe", "value": "desk" },
+                { "key": "search", "value": "Alpha" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/spaces/:id (Public Space Detail)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/spaces/{{spaceId}}", "host": ["{{baseUrl}}"], "path": ["api", "spaces", "{{spaceId}}"] }
+          }
+        },
+        {
+          "name": "GET /api/spaces/availability (Check Availability)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/spaces/availability?id_space={{spaceId}}&tanggal=2026-09-30&jam_mulai=09:00&durasi_jam=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "spaces", "availability"],
+              "query": [
+                { "key": "id_space", "value": "{{spaceId}}" },
+                { "key": "tanggal", "value": "2026-09-30" },
+                { "key": "jam_mulai", "value": "09:00" },
+                { "key": "durasi_jam", "value": "3" }
+              ]
+            }
           }
         }
       ]
     },
     {
-      "name": "Discounts & Promotions",
+      "name": "03 - Discounts & Promotions",
       "item": [
+        {
+          "name": "POST /api/admin/diskon (Admin Tambah Promo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.id) {",
+                  "        pm.environment.set('discountId', String(res.data.id));",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_diskon\": \"PROMOHEMAT20\",\n  \"persentase_diskon\": 20,\n  \"tanggal_awal\": \"2026-01-01T00:00:00.000Z\",\n  \"tanggal_akhir\": \"2026-12-31T23:59:59.000Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admin/diskon", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon"] }
+          }
+        },
+        {
+          "name": "GET /api/admin/diskon (Admin List Discounts)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/diskon", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon"] }
+          }
+        },
+        {
+          "name": "GET /api/admin/diskon/:id (Admin Detail Discount)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/diskon/{{discountId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon", "{{discountId}}"] }
+          }
+        },
+        {
+          "name": "PUT /api/admin/diskon/:id (Admin Update Discount)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persentase_diskon\": 25\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/admin/diskon/{{discountId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon", "{{discountId}}"] }
+          }
+        },
         {
           "name": "GET /api/diskon/active (Public Active Discounts)",
           "request": {
@@ -252,7 +402,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nama_diskon\": \"PROMOHEMAT20\",\n  \"id_space\": 1\n}"
+              "raw": "{\n  \"nama_diskon\": \"PROMOHEMAT20\",\n  \"id_space\": {{spaceId}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/diskon/check", "host": ["{{baseUrl}}"], "path": ["api", "diskon", "check"] }
           }
@@ -261,86 +411,48 @@
           "name": "GET /api/diskon/:id (Public Discount Detail)",
           "request": {
             "method": "GET",
-            "url": { "raw": "{{baseUrl}}/api/diskon/1", "host": ["{{baseUrl}}"], "path": ["api", "diskon", "1"] }
-          }
-        },
-        {
-          "name": "GET /api/admin/diskon (Admin List Discounts)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/diskon", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon"] }
-          }
-        },
-        {
-          "name": "POST /api/admin/diskon (Admin Create Discount)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nama_diskon\": \"PROMOAGUSTUS\",\n  \"persentase_diskon\": 20,\n  \"tanggal_awal\": \"2026-08-01T00:00:00.000Z\",\n  \"tanggal_akhir\": \"2026-08-31T23:59:59.000Z\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/admin/diskon", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon"] }
-          }
-        },
-        {
-          "name": "GET /api/admin/diskon/:id (Admin Discount Detail)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/diskon/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon", "1"] }
-          }
-        },
-        {
-          "name": "PUT /api/admin/diskon/:id (Admin Update Discount)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nama_diskon\": \"PROMOAGUSTUS2026\",\n  \"persentase_diskon\": 25,\n  \"tanggal_akhir\": \"2026-09-15T23:59:59.000Z\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/admin/diskon/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon", "1"] }
-          }
-        },
-        {
-          "name": "DELETE /api/admin/diskon/:id (Admin Delete Discount)",
-          "request": {
-            "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/diskon/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon", "1"] }
+            "url": { "raw": "{{baseUrl}}/api/diskon/{{discountId}}", "host": ["{{baseUrl}}"], "path": ["api", "diskon", "{{discountId}}"] }
           }
         }
       ]
     },
     {
-      "name": "Reservations",
+      "name": "04 - Member Reservations",
       "item": [
         {
-          "name": "POST /api/reservasi (Create Reservation)",
+          "name": "POST /api/reservasi (Buat Reservasi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.id) {",
+                  "        pm.environment.set('reservationId', String(res.data.id));",
+                  "        pm.environment.set('bookingCode', res.data.kode_booking);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{memberToken}}" },
-              { "key": "Idempotency-Key", "value": "idemp-test-999-booking" }
+              { "key": "Authorization", "value": "Bearer {{memberToken}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id_space\": 1,\n  \"tanggal_reservasi\": \"2026-09-30\",\n  \"jam_mulai\": \"09:00\",\n  \"durasi_jam\": 3,\n  \"id_diskon\": 1,\n  \"kode_promo\": \"PROMOHEMAT20\"\n}"
+              "raw": "{\n  \"id_space\": {{spaceId}},\n  \"tanggal_reservasi\": \"2026-09-30\",\n  \"jam_mulai\": \"09:00\",\n  \"durasi_jam\": 3,\n  \"id_diskon\": {{discountId}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/reservasi", "host": ["{{baseUrl}}"], "path": ["api", "reservasi"] }
           }
         },
         {
-          "name": "GET /api/reservasi/my (Get My Reservations)",
+          "name": "GET /api/reservasi/my (Daftar Reservasi Member)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
@@ -348,7 +460,7 @@
           }
         },
         {
-          "name": "GET /api/reservasi/my/history (Get Reservation History)",
+          "name": "GET /api/reservasi/my/history (Histori Pemesanan)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
@@ -364,36 +476,52 @@
           }
         },
         {
-          "name": "GET /api/reservasi/:id (Get Reservation Detail)",
+          "name": "GET /api/reservasi/:id (Detail Reservasi - Member)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/reservasi/1", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "1"] }
+            "url": { "raw": "{{baseUrl}}/api/reservasi/{{reservationId}}", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "{{reservationId}}"] }
           }
         },
         {
-          "name": "GET /api/reservasi/:id/e-ticket (Get E-Ticket & QR)",
+          "name": "GET /api/reservasi/:id/e-ticket (E-Ticket & QR Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const res = pm.response.json();",
+                  "    if (res.data && res.data.qr_code_payload) {",
+                  "        pm.environment.set('qrToken', res.data.qr_code_payload);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/reservasi/1/e-ticket", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "1", "e-ticket"] }
+            "url": { "raw": "{{baseUrl}}/api/reservasi/{{reservationId}}/e-ticket", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "{{reservationId}}", "e-ticket"] }
           }
         },
         {
-          "name": "PATCH /api/reservasi/:id/cancel (Cancel Reservation)",
+          "name": "PATCH /api/reservasi/:id/cancel (Member Batalkan Booking)",
           "request": {
             "method": "PATCH",
             "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/reservasi/1/cancel", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "1", "cancel"] }
+            "url": { "raw": "{{baseUrl}}/api/reservasi/{{cancelReservationId}}", "host": ["{{baseUrl}}"], "path": ["api", "reservasi", "{{cancelReservationId}}", "cancel"] }
           }
         }
       ]
     },
     {
-      "name": "Admin Operations & Reports",
+      "name": "05 - Admin Operations & Reports",
       "item": [
         {
-          "name": "GET /api/admin/profile (Get Coworking Profile)",
+          "name": "GET /api/admin/profile (Profil Coworking)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
@@ -401,7 +529,7 @@
           }
         },
         {
-          "name": "PUT /api/admin/profile (Update Coworking Profile)",
+          "name": "PUT /api/admin/profile (Update Profil Coworking)",
           "request": {
             "method": "PUT",
             "header": [
@@ -416,7 +544,7 @@
           }
         },
         {
-          "name": "GET /api/admin/members (Admin List Members)",
+          "name": "GET /api/admin/members (List Member Ber-scope)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
@@ -438,21 +566,21 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"user_budi\",\n  \"password\": \"Password123!\",\n  \"nama_member\": \"Budi Raharjo\",\n  \"instansi\": \"SMK Telkom Malang\",\n  \"alamat\": \"Jl. Danau Ranau No. 1, Sawojajar, Malang\",\n  \"telp\": \"085712345678\",\n  \"foto\": \"budi.jpg\"\n}"
+              "raw": "{\n  \"username\": \"assisted_{{$timestamp}}\",\n  \"password\": \"Password123!\",\n  \"nama_member\": \"Assisted Customer\",\n  \"instansi\": \"Universitas Brawijaya\",\n  \"alamat\": \"Jl. Veteran Malang\",\n  \"telp\": \"085712345678\",\n  \"foto\": \"budi.jpg\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/admin/members", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members"] }
           }
         },
         {
-          "name": "GET /api/admin/members/:id (Admin Member Detail)",
+          "name": "GET /api/admin/members/:id (Detail Member)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/members/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members", "1"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/members/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members", "{{memberId}}"] }
           }
         },
         {
-          "name": "PUT /api/admin/members/:id (Admin Update Member)",
+          "name": "PUT /api/admin/members/:id (Update Member Terbatas)",
           "request": {
             "method": "PUT",
             "header": [
@@ -461,21 +589,13 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nama_member\": \"Budi Raharjo, S.T.\",\n  \"instansi\": \"PT Teknologi Hebat\",\n  \"alamat\": \"Jl. Danau Ranau No. 2, Malang\",\n  \"telp\": \"085712345678\",\n  \"foto\": \"budi_new.jpg\"\n}"
+              "raw": "{\n  \"nama_member\": \"Budi Santoso, S.T.\",\n  \"instansi\": \"PT Teknologi Hebat\",\n  \"alamat\": \"Jl. Danau Ranau No. 2, Malang\",\n  \"telp\": \"085712345678\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/admin/members/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members", "1"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/members/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members", "{{memberId}}"] }
           }
         },
         {
-          "name": "DELETE /api/admin/members/:id (Admin Delete Member - 409 Conflict)",
-          "request": {
-            "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/members/1", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members", "1"] }
-          }
-        },
-        {
-          "name": "POST /api/admin/reservasi/verify-qr (Verify QR Ticket)",
+          "name": "POST /api/admin/reservasi/verify-qr (Verifikasi QR Code)",
           "request": {
             "method": "POST",
             "header": [
@@ -484,13 +604,13 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"token\": \"VERIFY-RESERVASI-1-BOOK-20260930-A1B2C3\"\n}"
+              "raw": "{\n  \"token\": \"{{qrToken}}\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/api/admin/reservasi/verify-qr", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "verify-qr"] }
           }
         },
         {
-          "name": "GET /api/admin/reservasi (Admin List Reservations)",
+          "name": "GET /api/admin/reservasi (Filter Status & Tanggal)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
@@ -506,7 +626,7 @@
           }
         },
         {
-          "name": "PATCH /api/admin/reservasi/:id/status (Approve/Reject Status)",
+          "name": "PATCH /api/admin/reservasi/:id/status (Approve Status)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -517,27 +637,27 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"disetujui\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/1/status", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "1", "status"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/{{reservationId}}/status", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "{{reservationId}}", "status"] }
           }
         },
         {
-          "name": "POST /api/admin/reservasi/:id/check-in (Check-In Guest)",
+          "name": "POST /api/admin/reservasi/:id/check-in (Check-In Tamu)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/1/check-in", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "1", "check-in"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/{{reservationId}}/check-in", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "{{reservationId}}", "check-in"] }
           }
         },
         {
-          "name": "POST /api/admin/reservasi/:id/check-out (Check-Out Guest)",
+          "name": "POST /api/admin/reservasi/:id/check-out (Check-Out Tamu)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
-            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/1/check-out", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "1", "check-out"] }
+            "url": { "raw": "{{baseUrl}}/api/admin/reservasi/{{reservationId}}/check-out", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reservasi", "{{reservationId}}", "check-out"] }
           }
         },
         {
-          "name": "GET /api/admin/reports/monthly (Monthly Financial Report)",
+          "name": "GET /api/admin/reports/monthly (Rekapitulasi Finansial)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
@@ -553,7 +673,7 @@
           }
         },
         {
-          "name": "GET /api/admin/reports/income (Income Alias Report)",
+          "name": "GET /api/admin/reports/income (Income Alias)",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
@@ -571,60 +691,92 @@
       ]
     },
     {
-      "name": "Upload Media",
+      "name": "06 - Uploads",
       "item": [
         {
-          "name": "POST /api/upload/image (General Media Upload)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "banner.jpg"
-                }
-              ]
-            },
-            "url": { "raw": "{{baseUrl}}/api/upload/image", "host": ["{{baseUrl}}"], "path": ["api", "upload", "image"] }
-          }
-        },
-        {
-          "name": "POST /api/upload/spaces (Upload Space Image)",
+          "name": "POST /api/upload/image (General Image Upload)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
             "body": {
               "mode": "formdata",
               "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "desk_alpha_01.jpg"
-                }
+                { "key": "file", "type": "file", "src": "banner.jpg" }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/api/upload/image", "host": ["{{baseUrl}}"], "path": ["api", "upload", "image"] }
+          }
+        },
+        {
+          "name": "POST /api/upload/spaces (Space Image Upload)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "desk_alpha_01.jpg" }
               ]
             },
             "url": { "raw": "{{baseUrl}}/api/upload/spaces", "host": ["{{baseUrl}}"], "path": ["api", "upload", "spaces"] }
           }
         },
         {
-          "name": "POST /api/upload/members (Upload Member Avatar)",
+          "name": "POST /api/upload/members (Member Avatar Upload)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
             "body": {
               "mode": "formdata",
               "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": "member_john.jpg"
-                }
+                { "key": "file", "type": "file", "src": "member_john.jpg" }
               ]
             },
             "url": { "raw": "{{baseUrl}}/api/upload/members", "host": ["{{baseUrl}}"], "path": ["api", "upload", "members"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Negative & Security Tests",
+      "item": [
+        {
+          "name": "POST /api/reservasi (Bentrok Jam - 409 Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{memberToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_space\": {{spaceId}},\n  \"tanggal_reservasi\": \"2026-09-30\",\n  \"jam_mulai\": \"10:00\",\n  \"durasi_jam\": 2\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/reservasi", "host": ["{{baseUrl}}"], "path": ["api", "reservasi"] }
+          }
+        },
+        {
+          "name": "DELETE /api/admin/members/:id (Tolak Hapus Member - 409 Conflict)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/members/999", "host": ["{{baseUrl}}"], "path": ["api", "admin", "members", "999"] }
+          }
+        },
+        {
+          "name": "DELETE /api/admin/spaces/:id (Hapus Space)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/spaces/{{spaceId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "spaces", "{{spaceId}}"] }
+          }
+        },
+        {
+          "name": "DELETE /api/admin/diskon/:id (Hapus Diskon)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/diskon/{{discountId}}", "host": ["{{baseUrl}}"], "path": ["api", "admin", "diskon", "{{discountId}}"] }
           }
         }
       ]

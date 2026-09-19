@@ -8,17 +8,23 @@ import {
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../database/prisma.service.js';
+import { STORAGE_SERVICE } from '../../infrastructure/storage/storage.module.js';
+import type { StorageService } from '../../infrastructure/storage/storage.interface.js';
 import {
   UpdateCoworkingProfileDto,
   CreateMemberAdminDto,
   UpdateMemberAdminDto,
+  AdminMemberQueryDto,
   UpdateReservasiStatusDto,
   ReportQueryDto,
 } from './dto/admin.dto.js';
 
 @Injectable()
 export class AdminService {
-  constructor(@Inject(PrismaService) private prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private prisma: PrismaService,
+    @Inject(STORAGE_SERVICE) private storage: StorageService,
+  ) {}
 
   async getProfile(user: any) {
     if (!user?.spaceOwner?.id) {
@@ -69,11 +75,98 @@ export class AdminService {
         nama_coworking: updated.namaCoworking,
         nama_pemilik: updated.namaPemilik,
         telp: updated.telp,
+        alamat: updated.alamat,
+        deskripsi_fasilitas: updated.deskripsiFasilitas,
       },
     };
   }
 
-  async findMembers(user: any, search?: string) {
+  async getDashboardSummary(user: any) {
+    if (!user?.spaceOwner?.id) {
+      throw new ForbiddenException('Akses hanya untuk admin space');
+    }
+
+    const ownerId = user.spaceOwner.id;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayDate = new Date(`${todayStr}T00:00:00.000Z`);
+
+    const [
+      pendingCount,
+      activeCount,
+      spacesCount,
+      membersCount,
+      pendingQueue,
+      todayReservations,
+    ] = await Promise.all([
+      this.prisma.reservation.count({
+        where: { idOwner: ownerId, status: 'belum_dikonfirm' },
+      }),
+      this.prisma.reservation.count({
+        where: { idOwner: ownerId, status: 'aktif' },
+      }),
+      this.prisma.space.count({
+        where: { idOwner: ownerId, archivedAt: null },
+      }),
+      this.prisma.member.count({
+        where: {
+          archivedAt: null,
+          reservations: {
+            some: { idOwner: ownerId },
+          },
+        },
+      }),
+      this.prisma.reservation.findMany({
+        where: { idOwner: ownerId, status: 'belum_dikonfirm' },
+        include: { member: true, space: true, detail: true },
+        orderBy: { id: 'desc' },
+        take: 5,
+      }),
+      this.prisma.reservation.findMany({
+        where: { idOwner: ownerId, tanggalReservasi: todayDate },
+        include: { member: true, space: true, detail: true },
+        orderBy: { jamMulai: 'asc' },
+        take: 5,
+      }),
+    ]);
+
+    return {
+      message: 'Ringkasan dashboard berhasil dimuat',
+      data: {
+        metrics: {
+          pending_reservations: pendingCount,
+          active_reservations: activeCount,
+          active_spaces: spacesCount,
+          total_members: membersCount,
+        },
+        pending_queue: pendingQueue.map((r) => ({
+          id: r.id,
+          kode_booking: r.kodeBooking,
+          tanggal_reservasi: r.tanggalReservasi.toISOString().split('T')[0],
+          jam_mulai: r.jamMulai.toISOString().split('T')[1].substring(0, 5),
+          jam_selesai: r.jamSelesai.toISOString().split('T')[1].substring(0, 5),
+          durasi_jam: r.durasiJam,
+          total_bayar: r.detail?.totalHarga || 0,
+          status: r.status,
+          member_name: r.member?.namaMember ?? 'Member',
+          space_name: r.space?.namaSpace ?? 'Space',
+        })),
+        today_reservations: todayReservations.map((r) => ({
+          id: r.id,
+          kode_booking: r.kodeBooking,
+          tanggal_reservasi: r.tanggalReservasi.toISOString().split('T')[0],
+          jam_mulai: r.jamMulai.toISOString().split('T')[1].substring(0, 5),
+          jam_selesai: r.jamSelesai.toISOString().split('T')[1].substring(0, 5),
+          durasi_jam: r.durasiJam,
+          total_bayar: r.detail?.totalHarga || 0,
+          status: r.status,
+          member_name: r.member?.namaMember ?? 'Member',
+          space_name: r.space?.namaSpace ?? 'Space',
+        })),
+      },
+    };
+  }
+
+  async findMembers(user: any, query?: AdminMemberQueryDto) {
     if (!user?.spaceOwner?.id) {
       throw new ForbiddenException('Akses hanya untuk admin space');
     }
@@ -89,28 +182,48 @@ export class AdminService {
       },
     };
 
-    if (search) {
+    if (query?.search && query.search.trim()) {
       where.OR = [
-        { namaMember: { contains: search } },
-        { instansi: { contains: search } },
-        { telp: { contains: search } },
+        { namaMember: { contains: query.search.trim() } },
+        { instansi: { contains: query.search.trim() } },
+        { telp: { contains: query.search.trim() } },
       ];
     }
 
-    const members = await this.prisma.member.findMany({
-      where,
-      orderBy: { id: 'asc' },
-    });
+    const page = query?.page && query.page > 0 ? query.page : 1;
+    const limit = query?.limit && query.limit > 0 ? query.limit : 20;
+    const skip = (page - 1) * limit;
 
-    return members.map((m) => ({
+    const [total, members] = await Promise.all([
+      this.prisma.member.count({ where }),
+      this.prisma.member.findMany({
+        where,
+        orderBy: { id: 'asc' },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const items = members.map((m) => ({
       id: m.id,
       nama_member: m.namaMember,
       instansi: m.instansi,
       alamat: m.alamat,
       telp: m.telp,
       foto: m.foto,
+      foto_url: m.foto ? this.storage.getPublicUrl('members', m.foto) : null,
       created_at: m.createdAt.toISOString(),
     }));
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+      },
+    };
   }
 
   async createMemberAssisted(dto: CreateMemberAdminDto) {
@@ -137,13 +250,27 @@ export class AdminService {
         data: {
           idUser: user.id,
           roleGuard: 'member',
-          namaMember: dto.nama_member,
-          instansi: dto.instansi,
-          alamat: dto.alamat,
-          telp: dto.telp,
+          namaMember: dto.nama_member.trim(),
+          instansi: dto.instansi.trim(),
+          alamat: dto.alamat.trim(),
+          telp: dto.telp.trim(),
           foto: dto.foto || null,
         },
       });
+
+      if (dto.foto) {
+        await tx.mediaUpload.updateMany({
+          where: {
+            objectKey: dto.foto,
+            purpose: 'member_photo',
+          },
+          data: {
+            status: 'attached',
+            attachedEntityType: 'member',
+            attachedEntityId: member.id,
+          },
+        });
+      }
 
       return {
         message: 'Data member baru berhasil ditambahkan!',
@@ -154,6 +281,7 @@ export class AdminService {
           alamat: member.alamat,
           telp: member.telp,
           foto: member.foto,
+          foto_url: member.foto ? this.storage.getPublicUrl('members', member.foto) : null,
         },
       };
     });
@@ -190,6 +318,8 @@ export class AdminService {
       alamat: member.alamat,
       telp: member.telp,
       foto: member.foto,
+      foto_url: member.foto ? this.storage.getPublicUrl('members', member.foto) : null,
+      created_at: member.createdAt.toISOString(),
     };
   }
 
@@ -217,15 +347,33 @@ export class AdminService {
       throw new NotFoundException('Member tidak ditemukan');
     }
 
-    const updated = await this.prisma.member.update({
-      where: { id: existing.id },
-      data: {
-        namaMember: dto.nama_member ?? existing.namaMember,
-        instansi: dto.instansi ?? existing.instansi,
-        alamat: dto.alamat ?? existing.alamat,
-        telp: dto.telp ?? existing.telp,
-        foto: dto.foto !== undefined ? dto.foto : existing.foto,
-      },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const res = await tx.member.update({
+        where: { id: existing.id },
+        data: {
+          namaMember: dto.nama_member !== undefined ? dto.nama_member.trim() : existing.namaMember,
+          instansi: dto.instansi !== undefined ? dto.instansi.trim() : existing.instansi,
+          alamat: dto.alamat !== undefined ? dto.alamat.trim() : existing.alamat,
+          telp: dto.telp !== undefined ? dto.telp.trim() : existing.telp,
+          foto: dto.foto !== undefined ? dto.foto : existing.foto,
+        },
+      });
+
+      if (dto.foto && dto.foto !== existing.foto) {
+        await tx.mediaUpload.updateMany({
+          where: {
+            objectKey: dto.foto,
+            purpose: 'member_photo',
+          },
+          data: {
+            status: 'attached',
+            attachedEntityType: 'member',
+            attachedEntityId: res.id,
+          },
+        });
+      }
+
+      return res;
     });
 
     return {
@@ -236,6 +384,8 @@ export class AdminService {
         instansi: updated.instansi,
         alamat: updated.alamat,
         telp: updated.telp,
+        foto: updated.foto,
+        foto_url: updated.foto ? this.storage.getPublicUrl('members', updated.foto) : null,
       },
     };
   }

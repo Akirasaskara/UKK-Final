@@ -25,7 +25,7 @@ Konvensi global:
 
 ### API-EP-001 — `GET /`
 - **Auth/scope:** publik; tanpa tenant key. **Header/parameter/body:** tidak ada.
-- **Sukses:** 200; `data` berisi `name`, `version`, `status`, `swagger_docs`, `description`, `documentation_links`. Contoh ringkas: `{"status":true,"statusCode":200,"data":{"name":"Coworking Space Backend API - UKK RPL Paket B","version":"1.0.0","status":"online","swagger_docs":"/docs"}}`.
+- **Sukses:** 200; `data` berisi `name`, `version`, `status`, `swagger_docs`, `description`, `documentation_links`. Contoh ringkas: `{"status":true,"statusCode":200,"data":{"name":"Coworking Space Backend API","version":"1.0.0","status":"online","swagger_docs":"/docs"}}`.
 - **Error:** 500 envelope standar. **Aturan:** hanya metadata publik; URL dibentuk dari konfigurasi dan tidak membocorkan dependency/secret.
 
 ### API-EP-002 — `GET /health`

@@ -47,6 +47,7 @@ export const queryKeys = {
     },
   },
   admin: {
+    dashboard: () => ['admin', 'dashboard'] as const,
     profile: () => ['admin', 'profile'] as const,
     spaces: {
       list: () => ['admin', 'spaces', 'list'] as const,

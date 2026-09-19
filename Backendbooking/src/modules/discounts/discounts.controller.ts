@@ -5,6 +5,7 @@ import {
   Put,
   Delete,
   Param,
+  Query,
   Body,
   UseGuards,
   ParseIntPipe,
@@ -12,10 +13,14 @@ import {
   HttpStatus,
   Inject,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { DiscountsService } from './discounts.service.js';
 import { CheckPromoDto } from './dto/discount.dto.js';
-import { CreateDiskonDto, UpdateDiskonDto } from './dto/create-discount.dto.js';
+import {
+  CreateDiskonDto,
+  UpdateDiskonDto,
+  AdminPromotionQueryDto,
+} from './dto/create-discount.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -27,11 +32,15 @@ import { RolesGuard } from '../../common/guards/roles.guard.js';
 export class DiscountsController {
   constructor(@Inject(DiscountsService) private discountsService: DiscountsService) {}
 
-  @ApiOperation({ summary: 'Daftar Promo Diskon Aktif Semua Coworking (Publik)' })
+  @ApiOperation({ summary: 'Daftar Promo Diskon Aktif Semua Coworking atau Scoped Space (Publik)' })
+  @ApiQuery({ name: 'id_space', required: false, type: Number, description: 'Filter promo aktif milik owner space spesifik' })
   @Public()
   @Get('diskon/active')
-  findActive() {
-    return this.discountsService.findActive();
+  findActive(@Query('id_space') idSpace?: string) {
+    const parsedSpaceId = idSpace ? Number.parseInt(idSpace, 10) : undefined;
+    return this.discountsService.findActive(
+      Number.isFinite(parsedSpaceId) && (parsedSpaceId as number) > 0 ? parsedSpaceId : undefined,
+    );
   }
 
   @ApiOperation({ summary: 'Cek Validitas Kode Promo (Publik)' })
@@ -57,8 +66,11 @@ export class DiscountsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin_space')
   @Get('admin/diskon')
-  findAllAdmin(@CurrentUser() user: any) {
-    return this.discountsService.findAllAdmin(user);
+  findAllAdmin(
+    @CurrentUser() user: any,
+    @Query() query: AdminPromotionQueryDto,
+  ) {
+    return this.discountsService.findAllAdmin(user, query);
   }
 
   @ApiBearerAuth()
