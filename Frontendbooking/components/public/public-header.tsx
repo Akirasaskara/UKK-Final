@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
+import { useProfile } from '@/features/auth/hooks';
+import { LogoutButton } from '@/components/auth/logout-button';
 
 const navItems = [
   { href: '/', label: 'Beranda' },
@@ -14,6 +16,7 @@ const navItems = [
 export function PublicHeader() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { data: profile } = useProfile();
 
   return (
     <header className="sticky top-0 z-20 border-b border-border-default/80 bg-bg-surface/95 backdrop-blur-md">
@@ -54,18 +57,48 @@ export function PublicHeader() {
 
         {/* Desktop auth actions */}
         <div className="hidden md:flex md:items-center md:gap-3">
-          <Link
-            href="/login"
-            className="inline-flex min-h-11 items-center justify-center rounded-control px-4 py-2 text-sm font-semibold text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
-          >
-            Masuk
-          </Link>
-          <Link
-            href="/register/member"
-            className="inline-flex min-h-11 items-center justify-center rounded-control bg-action-primary px-4 py-2 text-sm font-semibold text-text-on-brand hover:bg-action-primary-hover active:bg-action-primary-active focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] transition-colors"
-          >
-            Daftar Member
-          </Link>
+          {profile?.role === 'member' ? (
+            <>
+              <Link
+                href="/member/bookings"
+                className="inline-flex min-h-11 items-center justify-center rounded-control px-4 py-2 text-sm font-semibold text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+              >
+                Booking Saya
+              </Link>
+              <Link
+                href="/member/profile"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-default px-4 py-2 text-sm font-semibold text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+              >
+                Profil
+              </Link>
+              <LogoutButton />
+            </>
+          ) : profile?.role === 'admin_space' ? (
+            <>
+              <Link
+                href="/admin"
+                className="inline-flex min-h-11 items-center justify-center rounded-control bg-action-primary px-4 py-2 text-sm font-semibold text-text-on-brand hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] transition-colors"
+              >
+                Dashboard
+              </Link>
+              <LogoutButton />
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="inline-flex min-h-11 items-center justify-center rounded-control px-4 py-2 text-sm font-semibold text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] transition-colors"
+              >
+                Masuk
+              </Link>
+              <Link
+                href="/register/member"
+                className="inline-flex min-h-11 items-center justify-center rounded-control bg-action-primary px-4 py-2 text-sm font-semibold text-text-on-brand hover:bg-action-primary-hover active:bg-action-primary-active focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] transition-colors"
+              >
+                Daftar Member
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle button */}
@@ -106,27 +139,64 @@ export function PublicHeader() {
               );
             })}
             <div className="pt-4 border-t border-border-default flex flex-col space-y-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex min-h-11 items-center justify-center rounded-control border border-border-default text-sm font-semibold text-text-primary hover:bg-bg-subtle"
-              >
-                Masuk ke Akun
-              </Link>
-              <Link
-                href="/register/member"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex min-h-11 items-center justify-center rounded-control bg-action-primary text-sm font-semibold text-text-on-brand"
-              >
-                Daftar sebagai Member
-              </Link>
-              <Link
-                href="/register/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex min-h-11 items-center justify-center rounded-control bg-bg-subtle text-xs font-semibold text-text-secondary hover:text-action-primary"
-              >
-                Daftar sebagai Pengelola Coworking
-              </Link>
+              {profile?.role === 'member' ? (
+                <>
+                  <Link
+                    href="/member/bookings"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex min-h-11 items-center justify-center rounded-control border border-border-default text-sm font-semibold text-text-primary hover:bg-bg-subtle"
+                  >
+                    Booking Saya
+                  </Link>
+                  <Link
+                    href="/member/profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex min-h-11 items-center justify-center rounded-control border border-border-default text-sm font-semibold text-text-primary hover:bg-bg-subtle"
+                  >
+                    Profil
+                  </Link>
+                  <div className="flex min-h-11 items-center justify-center">
+                    <LogoutButton />
+                  </div>
+                </>
+              ) : profile?.role === 'admin_space' ? (
+                <>
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex min-h-11 items-center justify-center rounded-control bg-action-primary text-sm font-semibold text-text-on-brand"
+                  >
+                    Dashboard Admin
+                  </Link>
+                  <div className="flex min-h-11 items-center justify-center">
+                    <LogoutButton />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex min-h-11 items-center justify-center rounded-control border border-border-default text-sm font-semibold text-text-primary hover:bg-bg-subtle"
+                  >
+                    Masuk ke Akun
+                  </Link>
+                  <Link
+                    href="/register/member"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex min-h-11 items-center justify-center rounded-control bg-action-primary text-sm font-semibold text-text-on-brand"
+                  >
+                    Daftar sebagai Member
+                  </Link>
+                  <Link
+                    href="/register/admin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex min-h-11 items-center justify-center rounded-control bg-bg-subtle text-xs font-semibold text-text-secondary hover:text-action-primary"
+                  >
+                    Daftar sebagai Pengelola Coworking
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>
