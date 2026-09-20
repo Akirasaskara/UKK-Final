@@ -23,8 +23,9 @@ out/
 *.cert
 *.crt
 
-uploads/
-**/uploads/
+/uploads/
+Backendbooking/uploads/
+!Frontendbooking/app/**/uploads/
 .temp/
 .tmp/
 *.pid
