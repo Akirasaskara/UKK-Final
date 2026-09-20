@@ -149,3 +149,32 @@ export class ReportQueryDto {
   @IsOptional()
   year?: number;
 }
+
+export class ReportSummaryQueryDto {
+  @ApiProperty({
+    example: 'month',
+    description: 'Granularitas agregasi waktu (day | week | month)',
+    enum: ['day', 'week', 'month'],
+  })
+  @IsString()
+  @IsIn(['day', 'week', 'month'], {
+    message: 'Granularity wajib berupa: day, week, atau month',
+  })
+  granularity!: 'day' | 'week' | 'month';
+
+  @ApiProperty({
+    example: '2026-09-01',
+    description: 'Batas awal rentang tanggal (YYYY-MM-DD inklusif)',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Parameter from wajib diisi (format YYYY-MM-DD)' })
+  from!: string;
+
+  @ApiProperty({
+    example: '2026-09-30',
+    description: 'Batas akhir rentang tanggal (YYYY-MM-DD inklusif)',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Parameter to wajib diisi (format YYYY-MM-DD)' })
+  to!: string;
+}

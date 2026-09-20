@@ -4,7 +4,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/database/prisma.service.js';
-import { calculateEndTime, generateBookingCode, generateTicketNumber } from '../src/common/utils/time.util.js';
+import { calculateEndTime, generateBookingCode, generateTicketNumber, getJakartaDateString } from '../src/common/utils/time.util.js';
 import { ResponseTransformInterceptor } from '../src/common/interceptors/response-transform.interceptor.js';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter.js';
 
@@ -56,6 +56,16 @@ describe('Backend Automated QA & Security Test Suite', () => {
       expect(calculateEndTime('09:00', 3)).toBe('12:00');
       expect(calculateEndTime('13:30', 2)).toBe('15:30');
       expect(calculateEndTime('08:15', 1)).toBe('09:15');
+    });
+
+    it('should reject reservations that cross the daily boundary', () => {
+      expect(calculateEndTime('21:00', 3)).toBe('24:00');
+      expect(() => calculateEndTime('22:00', 3)).toThrow('melewati batas operasional');
+      expect(() => calculateEndTime('23:30', 1)).toThrow('melewati batas operasional');
+    });
+
+    it('should resolve the business date in Asia/Jakarta', () => {
+      expect(getJakartaDateString(new Date('2026-09-30T18:00:00.000Z'))).toBe('2026-10-01');
     });
 
     it('should generate valid format booking codes', () => {

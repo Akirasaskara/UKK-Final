@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   Body,
+  Res,
   UseGuards,
   ParseIntPipe,
   HttpCode,
@@ -13,6 +14,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiHeader, ApiParam } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { ReservationsService } from './reservations.service.js';
 import { CreateReservasiDto, HistoryQueryDto } from './dto/reservation.dto.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -48,11 +50,22 @@ export class ReservationsController {
   @ApiOperation({ summary: 'Histori Pemesanan Berdasarkan Waktu (Member)' })
   @Roles('member')
   @Get('reservasi/my/history')
-  findMyHistory(
+  async findMyHistory(
     @CurrentUser() user: any,
     @Query() query: HistoryQueryDto,
+    @Res({ passthrough: true }) response: Response,
   ) {
-    return this.reservationsService.findMyHistory(user, query);
+    const result = await this.reservationsService.findMyHistory(user, query);
+    response.setHeader('X-Page', String(result.page));
+    response.setHeader('X-Per-Page', String(result.limit));
+    response.setHeader('X-Total-Count', String(result.total_reservasi));
+    return {
+      month: result.month,
+      year: result.year,
+      total_reservasi: result.total_reservasi,
+      total_pengeluaran: result.total_pengeluaran,
+      items: result.items,
+    };
   }
 
   @ApiOperation({ summary: 'Klaim / Tampilkan E-Ticket & QR Code (Member / Admin)' })

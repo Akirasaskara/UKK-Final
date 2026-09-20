@@ -23,6 +23,7 @@ import {
   AdminMemberQueryDto,
   UpdateReservasiStatusDto,
   ReportQueryDto,
+  ReportSummaryQueryDto,
 } from './dto/admin.dto.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -152,6 +153,17 @@ export class AdminController {
     @Query() query: ReportQueryDto,
   ) {
     return this.adminService.getMonthlyReport(user, query);
+  }
+
+  @ApiOperation({ summary: 'Laporan Finansial Multi-Granularity Bounded Summary (Harian, Mingguan, Bulanan) (Admin)' })
+  @ApiResponse({ status: 200, description: 'Ringkasan time-series dan breakdown finansial berhasil dimuat.' })
+  @ApiResponse({ status: 400, description: 'Rentang tanggal atau parameter granularity tidak valid.' })
+  @Get('reports/summary')
+  getReportSummary(
+    @CurrentUser() user: any,
+    @Query() query: ReportSummaryQueryDto,
+  ) {
+    return this.adminService.getReportSummary(user, query);
   }
 
   @ApiOperation({ summary: 'Alias Spesifik Untuk Fallback Hanya Net Income Laporan Finansial (Admin)' })

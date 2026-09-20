@@ -1,12 +1,12 @@
 import { CalendarDays, Clock, Tag, CheckCircle2 } from 'lucide-react';
-import type { MonthlyReportResult } from '../schemas';
+import type { ReportTotals } from '../schemas';
 import { formatIdr } from '@/lib/format/currency';
 
 type ReportKpiGridProps = {
-  report: MonthlyReportResult;
+  totals: ReportTotals;
 };
 
-export function ReportKpiGrid({ report }: ReportKpiGridProps) {
+export function ReportKpiGrid({ totals }: ReportKpiGridProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {/* 1. Total Transaksi */}
@@ -21,7 +21,7 @@ export function ReportKpiGrid({ report }: ReportKpiGridProps) {
         </div>
         <div>
           <p className="font-ui text-3xl font-bold tracking-tight text-text-primary tabular-nums">
-            {report.total_transaksi}
+            {totals.total_transaksi}
           </p>
           <p className="text-xs text-text-muted mt-1">
             Transaksi berstatus aktif/selesai
@@ -41,7 +41,7 @@ export function ReportKpiGrid({ report }: ReportKpiGridProps) {
         </div>
         <div>
           <p className="font-ui text-3xl font-bold tracking-tight text-text-primary tabular-nums">
-            {report.total_jam_terpakai} <span className="text-sm font-normal text-text-muted">Jam</span>
+            {totals.total_jam_terpakai} <span className="text-sm font-normal text-text-muted">Jam</span>
           </p>
           <p className="text-xs text-text-muted mt-1">
             Akumulasi durasi sewa ruang
@@ -61,10 +61,10 @@ export function ReportKpiGrid({ report }: ReportKpiGridProps) {
         </div>
         <div>
           <p className="font-ui text-2xl font-bold tracking-tight text-text-primary tabular-nums">
-            {formatIdr(report.estimasi_pendapatan_kotor)}
+            {formatIdr(totals.estimasi_pendapatan_kotor)}
           </p>
           <p className="text-xs text-status-success-text mt-1">
-            Potongan Promo: {formatIdr(report.total_potongan_diskon)}
+            Potongan Promo: {formatIdr(totals.total_potongan_diskon)}
           </p>
         </div>
       </article>
@@ -81,7 +81,7 @@ export function ReportKpiGrid({ report }: ReportKpiGridProps) {
         </div>
         <div>
           <p className="font-ui text-2xl font-bold tracking-tight text-action-primary tabular-nums">
-            {formatIdr(report.realisasi_pendapatan_bersih)}
+            {formatIdr(totals.realisasi_pendapatan_bersih)}
           </p>
           <p className="text-xs text-text-muted mt-1">
             Layanan berstatus selesai digunakan

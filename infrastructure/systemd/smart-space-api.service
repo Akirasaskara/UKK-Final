@@ -1,0 +1,24 @@
+[Unit]
+Description=Smart Space Booking - Backend REST API (NestJS)
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/smart-space/api/current
+EnvironmentFile=/opt/smart-space/api/.env.production
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-space-api
+
+# Security Sandbox
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

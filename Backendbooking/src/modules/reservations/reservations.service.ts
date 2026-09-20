@@ -12,6 +12,7 @@ import {
   calculateEndTime,
   generateBookingCode,
   generateTicketNumber,
+  getJakartaDateString,
 } from '../../common/utils/time.util.js';
 
 @Injectable()
@@ -24,11 +25,19 @@ export class ReservationsService {
     }
 
     const spaceId = BigInt(dto.id_space);
-    const jamSelesai = calculateEndTime(dto.jam_mulai, dto.durasi_jam);
-    const targetDate = new Date(`${dto.tanggal_reservasi}T00:00:00.000Z`);
+    let jamSelesai: string;
+    try {
+      jamSelesai = calculateEndTime(dto.jam_mulai, dto.durasi_jam);
+    } catch (err: any) {
+      throw new BadRequestException(err.message || 'Format jam mulai atau durasi tidak valid');
+    }
 
+    const targetDate = new Date(`${dto.tanggal_reservasi}T00:00:00.000Z`);
     const requestedStartTime = new Date(`1970-01-01T${dto.jam_mulai}:00.000Z`);
-    const requestedEndTime = new Date(`1970-01-01T${jamSelesai}:00.000Z`);
+    const requestedEndTime =
+      jamSelesai === '24:00'
+        ? new Date('1970-01-01T23:59:59.000Z')
+        : new Date(`1970-01-01T${jamSelesai}:00.000Z`);
 
     if (isNaN(requestedStartTime.getTime()) || isNaN(requestedEndTime.getTime())) {
       throw new BadRequestException('Format jam mulai atau durasi tidak valid');
@@ -232,13 +241,19 @@ export class ReservationsService {
         durasi_jam: r.durasiJam,
         total_bayar: r.detail ? r.detail.totalHarga : 0n,
         status: r.status,
-        space: r.space
+        space: r.detail
           ? {
-              id: r.space.id,
-              nama_space: r.space.namaSpace,
-              tipe: r.space.tipe,
+              id: r.idSpace,
+              nama_space: r.detail.namaSpaceSnapshot,
+              tipe: r.detail.tipeSpaceSnapshot,
             }
-          : null,
+          : r.space
+            ? {
+                id: r.space.id,
+                nama_space: r.space.namaSpace,
+                tipe: r.space.tipe,
+              }
+            : null,
       };
     });
   }
@@ -248,33 +263,49 @@ export class ReservationsService {
       throw new ForbiddenException('Akses hanya untuk member');
     }
 
-    const currentYear = query.year || new Date().getFullYear();
-    const currentMonth = query.month || new Date().getMonth() + 1;
+    const jakartaToday = getJakartaDateString().split('-');
+    const currentYear = query.year ?? Number(jakartaToday[0]);
+    const currentMonth = query.month ?? Number(jakartaToday[1]);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
 
     const startDate = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
     const endDate = new Date(Date.UTC(currentYear, currentMonth, 1));
+    const where = {
+      idMember: user.member.id,
+      tanggalReservasi: {
+        gte: startDate,
+        lt: endDate,
+      },
+    };
 
-    const reservations = await this.prisma.reservation.findMany({
-      where: {
-        idMember: user.member.id,
-        tanggalReservasi: {
-          gte: startDate,
-          lt: endDate,
+    const [reservations, totalReservations, aggregate] = await this.prisma.$transaction([
+      this.prisma.reservation.findMany({
+        where,
+        include: {
+          detail: true,
         },
-      },
-      include: {
-        detail: true,
-      },
-      orderBy: { id: 'desc' },
-    });
+        orderBy: [
+          { tanggalReservasi: 'desc' },
+          { id: 'desc' },
+        ],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.reservation.count({ where }),
+      this.prisma.reservationDetail.aggregate({
+        where: {
+          reservation: where,
+        },
+        _sum: { totalHarga: true },
+      }),
+    ]);
 
-    let totalPengeluaran = 0n;
     const items = reservations.map((r) => {
       const dateStr = r.tanggalReservasi.toISOString().split('T')[0];
       const startStr = r.jamMulai.toISOString().split('T')[1].substring(0, 5);
       const endStr = r.jamSelesai.toISOString().split('T')[1].substring(0, 5);
       const totalBayar = r.detail ? r.detail.totalHarga : 0n;
-      totalPengeluaran += totalBayar;
 
       return {
         id: r.id,
@@ -292,8 +323,10 @@ export class ReservationsService {
     return {
       month: currentMonth,
       year: currentYear,
-      total_reservasi: reservations.length,
-      total_pengeluaran: totalPengeluaran,
+      page,
+      limit,
+      total_reservasi: totalReservations,
+      total_pengeluaran: aggregate._sum.totalHarga ?? 0n,
       items,
     };
   }
@@ -340,18 +373,33 @@ export class ReservationsService {
       durasi_jam: reservation.durasiJam,
       total_bayar: reservation.detail ? reservation.detail.totalHarga : 0n,
       status: reservation.status,
-      member: reservation.member
+      member: reservation.detail
         ? {
-            nama_member: reservation.member.namaMember,
-            telp: reservation.member.telp,
+            nama_member: reservation.detail.namaMemberSnapshot,
+            telp: reservation.detail.telpMemberSnapshot,
+            instansi: reservation.detail.instansiMemberSnapshot,
           }
-        : null,
-      space: reservation.space
+        : reservation.member
+          ? {
+              nama_member: reservation.member.namaMember,
+              telp: reservation.member.telp,
+            }
+          : null,
+      space: reservation.detail
         ? {
-            nama_space: reservation.space.namaSpace,
-            harga_per_jam: reservation.space.hargaPerJam,
+            id: reservation.idSpace,
+            nama_space: reservation.detail.namaSpaceSnapshot,
+            tipe: reservation.detail.tipeSpaceSnapshot,
+            harga_per_jam: reservation.detail.hargaPerJam,
           }
-        : null,
+        : reservation.space
+          ? {
+              id: reservation.space.id,
+              nama_space: reservation.space.namaSpace,
+              tipe: reservation.space.tipe,
+              harga_per_jam: reservation.space.hargaPerJam,
+            }
+          : null,
     };
   }
 
@@ -436,29 +484,37 @@ export class ReservationsService {
     }
 
     const resId = BigInt(id);
-    const reservation = await this.prisma.reservation.findFirst({
+    const result = await this.prisma.reservation.updateMany({
       where: {
         id: resId,
         idMember: user.member.id,
+        status: { in: ['belum_dikonfirm', 'disetujui'] },
       },
-    });
-
-    if (!reservation) {
-      throw new NotFoundException('Reservasi tidak ditemukan');
-    }
-
-    if (reservation.status !== 'belum_dikonfirm' && reservation.status !== 'disetujui') {
-      throw new BadRequestException(
-        `Pembatalan hanya diizinkan untuk reservasi belum dikonfirmasi atau disetujui! Status saat ini: ${reservation.status}`,
-      );
-    }
-
-    const updated = await this.prisma.reservation.update({
-      where: { id: reservation.id },
       data: {
         status: 'dibatalkan',
         version: { increment: 1 },
       },
+    });
+
+    if (result.count === 0) {
+      const reservation = await this.prisma.reservation.findFirst({
+        where: {
+          id: resId,
+          idMember: user.member.id,
+        },
+      });
+
+      if (!reservation) {
+        throw new NotFoundException('Reservasi tidak ditemukan');
+      }
+
+      throw new ConflictException(
+        `Pembatalan hanya diizinkan untuk reservasi belum dikonfirmasi atau disetujui! Status saat ini: ${reservation.status}`,
+      );
+    }
+
+    const updated = await this.prisma.reservation.findUniqueOrThrow({
+      where: { id: resId },
     });
 
     return {

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { QrCode, LogIn, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { useCallback, useState } from 'react';
 import { useVerifyTicketMutation, useCheckInMutation } from '@/features/admin/reservations/hooks';
 import type { QrVerificationResult } from '@/features/admin/reservations/schemas';
 import { formatReservationStatus } from '@/features/bookings/status';
@@ -11,9 +11,12 @@ import { formatSpaceType } from '@/lib/format/space';
 import { FormField, Input } from '@/components/ui/form-field';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import Link from 'next/link';
+import { QrCameraScanner } from './qr-camera-scanner';
+
+type EntryMode = 'camera' | 'manual';
 
 export function CheckInPageContent() {
+  const [entryMode, setEntryMode] = useState<EntryMode>('camera');
   const [tokenInput, setTokenInput] = useState('');
   const [verificationResult, setVerificationResult] = useState<QrVerificationResult | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -21,164 +24,250 @@ export function CheckInPageContent() {
   const verifyMutation = useVerifyTicketMutation();
   const checkInMutation = useCheckInMutation();
 
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault();
-    setSuccessMessage(null);
-    if (!tokenInput.trim()) return;
+  const verifyToken = useCallback(async (rawToken: string) => {
+    const token = rawToken.trim();
+    if (!token || verifyMutation.isPending) return;
 
+    setSuccessMessage(null);
+    setVerificationResult(null);
     try {
-      const res = await verifyMutation.mutateAsync(tokenInput.trim());
-      setVerificationResult(res);
+      const result = await verifyMutation.mutateAsync(token);
+      setTokenInput(token);
+      setVerificationResult(result);
     } catch {
       setVerificationResult(null);
     }
+  }, [verifyMutation]);
+
+  async function handleVerify(event: React.FormEvent) {
+    event.preventDefault();
+    await verifyToken(tokenInput);
   }
 
   async function handleExecuteCheckIn() {
-    if (!verificationResult) return;
+    if (!verificationResult || !verificationResult.can_check_in) return;
 
     try {
       await checkInMutation.mutateAsync(verificationResult.id);
-      setSuccessMessage(`Check-In berhasil untuk booking ${verificationResult.kode_booking}! Status sekarang aktif.`);
-      // Update preview status lokal
-      setVerificationResult((prev) => (prev ? { ...prev, status: 'aktif', can_check_in: false } : null));
+      setSuccessMessage(`Check-in berhasil untuk booking ${verificationResult.kode_booking}. Status reservasi sekarang aktif.`);
+      setVerificationResult((previous) =>
+        previous ? { ...previous, status: 'aktif', can_check_in: false } : null,
+      );
     } catch {
-      // Error handled by mutation
+      return;
     }
   }
 
-  const statusInfo = verificationResult ? formatReservationStatus(verificationResult.status) : null;
+  function useManualInput() {
+    setEntryMode('manual');
+    window.setTimeout(() => document.getElementById('qr_token')?.focus(), 0);
+  }
+
+  function resetForNextTicket() {
+    verifyMutation.reset();
+    checkInMutation.reset();
+    setTokenInput('');
+    setVerificationResult(null);
+    setSuccessMessage(null);
+    setEntryMode('camera');
+  }
+
+  const statusInfo = verificationResult
+    ? formatReservationStatus(verificationResult.status)
+    : null;
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="space-y-1">
-        <h1 className="font-ui text-2xl sm:text-3xl font-bold tracking-tight text-text-primary">
-          Verifikasi & Check-In Kedatangan
+    <div className="max-w-3xl space-y-7">
+      <header className="max-w-2xl">
+        <p className="text-sm font-semibold text-action-secondary">Operasional kedatangan</p>
+        <h1 className="mt-2 font-display text-3xl leading-tight text-text-primary sm:text-4xl">
+          Verifikasi dan check-in
         </h1>
-        <p className="text-xs sm:text-sm text-text-muted">
-          Masukkan kode e-ticket atau payload QR pelanggan untuk memeriksa data sebelum mengonfirmasi kedatangan.
+        <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">
+          Pindai QR atau masukkan token tiket. Data reservasi selalu ditampilkan sebelum check-in dikonfirmasi.
         </p>
+      </header>
+
+      <div className="flex border-b border-border-default" role="tablist" aria-label="Metode verifikasi tiket">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={entryMode === 'camera'}
+          aria-controls="camera-panel"
+          id="camera-tab"
+          onClick={() => setEntryMode('camera')}
+          className={`min-h-11 border-b-2 px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] ${
+            entryMode === 'camera'
+              ? 'border-action-primary text-action-primary'
+              : 'border-transparent text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          Pindai kamera
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={entryMode === 'manual'}
+          aria-controls="manual-panel"
+          id="manual-tab"
+          onClick={useManualInput}
+          className={`min-h-11 border-b-2 px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)] ${
+            entryMode === 'manual'
+              ? 'border-action-primary text-action-primary'
+              : 'border-transparent text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          Input manual
+        </button>
       </div>
 
-      {/* Manual Input Form */}
-      <form onSubmit={handleVerify} className="rounded-card border border-border-default bg-bg-surface p-6 shadow-card space-y-4">
-        <FormField
-          id="qr_token"
-          label="Kode E-Ticket / Token QR"
-          required
-          helper="Contoh format: VERIFY-RESERVASI-1-BOOK-20260930-XXXXXX"
-          error={verifyMutation.isError ? (verifyMutation.error instanceof Error ? verifyMutation.error.message : 'Token tidak valid') : undefined}
-        >
-          <div className="relative">
-            <QrCode size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" aria-hidden="true" />
-            <Input
+      {entryMode === 'camera' ? (
+        <div id="camera-panel" role="tabpanel" aria-labelledby="camera-tab">
+          <QrCameraScanner
+            disabled={verifyMutation.isPending || checkInMutation.isPending || verificationResult !== null}
+            onDetected={verifyToken}
+            onUseManual={useManualInput}
+            key={verificationResult || verifyMutation.isError ? 'camera-result' : 'camera-ready'}
+          />
+        </div>
+      ) : (
+        <div id="manual-panel" role="tabpanel" aria-labelledby="manual-tab">
+          <form onSubmit={handleVerify} className="rounded-card border border-border-default bg-bg-surface p-5 sm:p-6">
+            <FormField
               id="qr_token"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder="Tempel / ketik token QR di sini..."
-              className="pl-10 font-mono text-xs sm:text-sm"
+              label="Token QR atau kode e-ticket"
               required
-            />
-          </div>
-        </FormField>
+              helper="Terima payload QR VERIFY-RESERVASI-*, nomor TICKET-MOKLET-*, atau kode BOOK-*"
+              error={verifyMutation.isError
+                ? verifyMutation.error instanceof Error
+                  ? verifyMutation.error.message
+                  : 'Token tidak valid.'
+                : undefined}
+            >
+              <Input
+                id="qr_token"
+                value={tokenInput}
+                onChange={(event) => setTokenInput(event.target.value)}
+                placeholder="Tempel atau ketik token tiket"
+                className="font-mono text-sm"
+                autoComplete="off"
+                spellCheck={false}
+                aria-describedby={verifyMutation.isError ? 'qr_token-error' : 'qr_token-helper'}
+                required
+              />
+            </FormField>
 
-        <Button
-          type="submit"
-          pending={verifyMutation.isPending}
-          className="w-full"
-        >
-          {verifyMutation.isPending ? 'Memeriksa Tiket...' : 'Verifikasi Data Tiket'}
-        </Button>
-      </form>
+            <Button type="submit" pending={verifyMutation.isPending} className="mt-5 w-full sm:w-auto">
+              {verifyMutation.isPending ? 'Memeriksa tiket…' : 'Verifikasi tiket'}
+            </Button>
+          </form>
+        </div>
+      )}
 
-      {/* Success Notification */}
-      {successMessage ? (
-        <InlineAlert title="Check-In Selesai" variant="success">
-          <p className="text-xs mt-1">{successMessage}</p>
+      {verifyMutation.isPending ? (
+        <p role="status" className="text-sm text-text-secondary">
+          Memeriksa tiket pada coworking space Anda…
+        </p>
+      ) : null}
+
+      {verifyMutation.isError && entryMode === 'camera' ? (
+        <InlineAlert title="Tiket tidak dapat diverifikasi" variant="danger">
+          <p>{verifyMutation.error instanceof Error ? verifyMutation.error.message : 'Token QR tidak valid.'}</p>
+          <button
+            type="button"
+            onClick={useManualInput}
+            className="mt-3 min-h-11 rounded-control border border-status-danger-text px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
+          >
+            Periksa melalui input manual
+          </button>
         </InlineAlert>
       ) : null}
 
-      {/* Verification Preview Result */}
+      {successMessage ? (
+        <InlineAlert title="Check-in selesai" variant="success">
+          <p>{successMessage}</p>
+          <button
+            type="button"
+            onClick={resetForNextTicket}
+            className="mt-3 min-h-11 rounded-control border border-status-success-text px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
+          >
+            Pindai tiket lain
+          </button>
+        </InlineAlert>
+      ) : null}
+
       {verificationResult ? (
-        <div className="rounded-card border border-border-default bg-bg-surface p-6 shadow-card space-y-5">
-          <div className="flex items-center justify-between border-b border-border-default pb-4">
-            <div>
-              <p className="text-xs text-text-muted">Hasil Verifikasi</p>
-              <p className="font-mono text-base font-bold text-text-primary">
+        <section aria-labelledby="verification-result-title" className="rounded-card border border-border-default bg-bg-surface p-5 sm:p-6">
+          <div className="flex flex-col gap-3 border-b border-border-default pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p id="verification-result-title" className="text-xs font-semibold text-text-muted">Hasil verifikasi</p>
+              <p className="mt-1 break-all font-mono text-base font-bold text-text-primary">
                 {verificationResult.kode_booking}
               </p>
             </div>
             {statusInfo ? (
-              <span className={`rounded-badge px-3 py-1 text-xs font-semibold ${statusInfo.badgeStyle}`}>
+              <span className={`self-start rounded-badge px-3 py-1 text-xs font-semibold sm:self-auto ${statusInfo.badgeStyle}`}>
                 {statusInfo.label}
               </span>
             ) : null}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-xs">
-            <div className="space-y-1">
-              <p className="text-text-muted">Nama Member</p>
-              <p className="font-bold text-text-primary text-sm">{verificationResult.member.nama}</p>
-              <p className="text-text-muted">{verificationResult.member.instansi}</p>
-              <p className="text-text-muted">{verificationResult.member.telp}</p>
+          <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold text-text-muted">Member</dt>
+              <dd className="mt-1 text-sm font-bold text-text-primary">{verificationResult.member.nama}</dd>
+              <dd className="mt-1 text-sm text-text-secondary">{verificationResult.member.instansi}</dd>
+              <dd className="mt-1 text-sm tabular-nums text-text-secondary">{verificationResult.member.telp}</dd>
             </div>
-
-            <div className="space-y-1">
-              <p className="text-text-muted">Ruangan / Space</p>
-              <p className="font-bold text-text-primary text-sm">{verificationResult.space.nama}</p>
-              <p className="text-action-secondary font-medium">{formatSpaceType(verificationResult.space.tipe)}</p>
+            <div>
+              <dt className="text-xs font-semibold text-text-muted">Space</dt>
+              <dd className="mt-1 text-sm font-bold text-text-primary">{verificationResult.space.nama}</dd>
+              <dd className="mt-1 text-sm text-action-secondary">{formatSpaceType(verificationResult.space.tipe)}</dd>
             </div>
-          </div>
-
-          <div className="rounded-control border border-border-default bg-bg-subtle p-3.5 space-y-1.5 text-xs">
-            <div className="flex justify-between">
-              <span className="text-text-muted">Tanggal:</span>
-              <span className="font-semibold">{formatDateIndonesia(verificationResult.jadwal.tanggal)}</span>
+            <div>
+              <dt className="text-xs font-semibold text-text-muted">Jadwal</dt>
+              <dd className="mt-1 text-sm text-text-primary">{formatDateIndonesia(verificationResult.jadwal.tanggal)}</dd>
+              <dd className="mt-1 text-sm tabular-nums text-text-secondary">
+                {verificationResult.jadwal.jam_mulai}–{verificationResult.jadwal.jam_selesai} WIB ({verificationResult.jadwal.durasi})
+              </dd>
             </div>
-            <div className="flex justify-between">
-              <span className="text-text-muted">Waktu:</span>
-              <span className="font-semibold">{verificationResult.jadwal.jam_mulai} – {verificationResult.jadwal.jam_selesai} WIB ({verificationResult.jadwal.durasi})</span>
+            <div>
+              <dt className="text-xs font-semibold text-text-muted">Total transaksi</dt>
+              <dd className="mt-1 text-sm font-bold tabular-nums text-text-primary">
+                {formatIdr(verificationResult.total_dibayar)}
+              </dd>
             </div>
-            <div className="flex justify-between border-t border-border-default pt-1.5 font-bold">
-              <span>Total Dibayar:</span>
-              <span className="tabular-nums text-action-primary">{formatIdr(verificationResult.total_dibayar)}</span>
-            </div>
-          </div>
+          </dl>
 
           {checkInMutation.isError ? (
-            <InlineAlert title="Check-In Gagal" variant="danger">
-              <p className="text-xs mt-1">
-                {checkInMutation.error instanceof Error ? checkInMutation.error.message : 'Terjadi kendala saat check-in.'}
-              </p>
-            </InlineAlert>
+            <div className="mt-5">
+              <InlineAlert title="Check-in gagal" variant="danger">
+                {checkInMutation.error instanceof Error
+                  ? checkInMutation.error.message
+                  : 'Status reservasi mungkin telah berubah. Buka detail reservasi untuk memeriksa status terbaru.'}
+              </InlineAlert>
+            </div>
           ) : null}
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border-default">
+          <div className="mt-6 flex flex-col-reverse gap-3 border-t border-border-default pt-5 sm:flex-row sm:items-center sm:justify-between">
             <Link
               href={`/admin/reservations/${verificationResult.id}`}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-muted hover:text-text-primary"
+              className="inline-flex min-h-11 items-center justify-center rounded-control border border-border-strong px-4 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
             >
-              <span>Buka Detail Lengkap</span>
-              <ArrowRight size={14} aria-hidden="true" />
+              Buka detail reservasi
             </Link>
 
             {verificationResult.can_check_in ? (
-              <Button
-                type="button"
-                pending={checkInMutation.isPending}
-                onClick={handleExecuteCheckIn}
-                className="w-full sm:w-auto min-w-44"
-              >
-                <LogIn size={16} aria-hidden="true" />
-                <span>Konfirmasi Check-In</span>
+              <Button type="button" pending={checkInMutation.isPending} onClick={handleExecuteCheckIn} className="w-full sm:w-auto">
+                {checkInMutation.isPending ? 'Memproses check-in…' : 'Konfirmasi check-in'}
               </Button>
             ) : (
-              <span className="text-xs text-text-muted italic">
-                Status tidak memenuhi syarat check-in ({verificationResult.status})
-              </span>
+              <p className="text-sm text-text-secondary">
+                Reservasi berstatus {statusInfo?.label ?? verificationResult.status} dan tidak dapat di-check-in.
+              </p>
             )}
           </div>
-        </div>
+        </section>
       ) : null}
     </div>
   );

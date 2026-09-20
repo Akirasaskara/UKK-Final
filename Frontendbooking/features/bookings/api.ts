@@ -1,13 +1,16 @@
+import { z } from 'zod';
 import { apiClient } from '@/lib/api/client';
 import {
   createdBookingResultSchema,
   memberBookingListSchema,
+  memberHistorySchema,
   bookingDetailSchema,
   eTicketSchema,
   cancelBookingResultSchema,
   type CreateBookingInput,
   type CreatedBookingResult,
   type MemberBookingSummary,
+  type MemberHistory,
   type BookingDetail,
   type ETicketData,
   type CancelBookingResult,
@@ -19,6 +22,26 @@ export function createBooking(input: CreateBookingInput): Promise<CreatedBooking
 
 export function getMyBookings(signal?: AbortSignal): Promise<MemberBookingSummary[]> {
   return apiClient.get('/api/member/bookings', memberBookingListSchema, { signal });
+}
+
+export function getMyHistory(
+  params: { month: number; year: number; page: number; limit: number },
+  signal?: AbortSignal,
+): Promise<MemberHistory & { page: number; limit: number }> {
+  const query = new URLSearchParams({
+    month: String(params.month),
+    year: String(params.year),
+    page: String(params.page),
+    limit: String(params.limit),
+  });
+  return apiClient.get(
+    `/api/member/history?${query.toString()}`,
+    memberHistorySchema.extend({
+      page: z.number().int().positive(),
+      limit: z.number().int().min(1).max(100),
+    }),
+    { signal },
+  );
 }
 
 export function getBookingDetail(id: number, signal?: AbortSignal): Promise<BookingDetail> {

@@ -5,8 +5,18 @@ import { queryKeys } from '@/lib/api/query-keys';
 import {
   getMonthlyReport,
   getIncomeReport,
+  getReportSummary,
   type ReportFilterParams,
+  type ReportSummaryParams,
 } from './api';
+
+export function useReportSummary(params: ReportSummaryParams) {
+  return useQuery({
+    queryKey: queryKeys.admin.reports.summary(params),
+    queryFn: ({ signal }) => getReportSummary(params, signal),
+    staleTime: 0,
+  });
+}
 
 export function useMonthlyReport(params: ReportFilterParams = {}) {
   return useQuery({

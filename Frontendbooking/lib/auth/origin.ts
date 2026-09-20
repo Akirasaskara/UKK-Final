@@ -1,14 +1,7 @@
 import type { NextRequest } from 'next/server';
 
 export function isSameOriginRequest(request: NextRequest): boolean {
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
-  if (!host) return false;
-
-  const forwardedProtocol = request.headers.get('x-forwarded-proto');
-  const requestProtocol = forwardedProtocol
-    ? forwardedProtocol.split(',')[0]?.trim()
-    : new URL(request.url).protocol.replace(':', '');
-  const requestOrigin = `${requestProtocol}://${host}`;
+  const requestOrigin = request.nextUrl.origin;
   const origin = request.headers.get('origin');
 
   if (origin) {
@@ -20,11 +13,13 @@ export function isSameOriginRequest(request: NextRequest): boolean {
   }
 
   const fetchSite = request.headers.get('sec-fetch-site');
-  const referer = request.headers.get('referer');
   if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) {
     return false;
   }
-  if (!referer) return false;
+  const referer = request.headers.get('referer');
+  if (!referer) {
+    return fetchSite === 'same-origin';
+  }
 
   try {
     return new URL(referer).origin === requestOrigin;

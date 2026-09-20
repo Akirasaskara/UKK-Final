@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { environmentSchema } from './config/env.validation.js';
 import { PrismaModule } from './database/prisma.module.js';
 import { StorageModule } from './infrastructure/storage/storage.module.js';
@@ -19,12 +20,16 @@ import { AppController } from './app.controller.js';
       envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
       validationSchema: environmentSchema,
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get<number>('RATE_LIMIT_TTL_MS') || 60000,
+          limit: config.get<number>('RATE_LIMIT_DEFAULT') || 100,
+        },
+      ],
+    }),
     PrismaModule,
     StorageModule,
     AuthModule,
@@ -35,5 +40,11 @@ import { AppController } from './app.controller.js';
     UploadModule,
   ],
   controllers: [AppController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -138,11 +138,19 @@ export class SpacesService {
       throw new NotFoundException('Space tidak ditemukan!');
     }
 
-    const jamSelesai = calculateEndTime(query.jam_mulai, query.durasi_jam);
+    let jamSelesai: string;
+    try {
+      jamSelesai = calculateEndTime(query.jam_mulai, query.durasi_jam);
+    } catch (err: any) {
+      throw new BadRequestException(err.message || 'Format jam mulai atau durasi tidak valid');
+    }
     const targetDate = new Date(`${query.tanggal}T00:00:00.000Z`);
 
     const requestedStartTime = new Date(`1970-01-01T${query.jam_mulai}:00.000Z`);
-    const requestedEndTime = new Date(`1970-01-01T${jamSelesai}:00.000Z`);
+    const requestedEndTime =
+      jamSelesai === '24:00'
+        ? new Date('1970-01-01T23:59:59.000Z')
+        : new Date(`1970-01-01T${jamSelesai}:00.000Z`);
 
     const overlappingReservations = await this.prisma.reservation.findMany({
       where: {

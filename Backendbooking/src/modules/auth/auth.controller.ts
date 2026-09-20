@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service.js';
 import { RegisterMemberDto, RegisterAdminSpaceDto, LoginDto } from './dto/auth.dto.js';
 import { Public } from '../../common/decorators/public.decorator.js';
@@ -16,6 +17,7 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Format kredensial tidak valid' })
   @ApiResponse({ status: 409, description: 'Username sudah digunakan' })
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('register/member')
   @HttpCode(HttpStatus.CREATED)
   async registerMember(@Body() dto: RegisterMemberDto) {
@@ -25,6 +27,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Registrasi Pengelola (Admin Space) Baru' })
   @ApiResponse({ status: 201, description: 'Registrasi admin berhasil dan token diterbitkan.' })
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('register/admin-space')
   @HttpCode(HttpStatus.CREATED)
   async registerAdminSpace(@Body() dto: RegisterAdminSpaceDto) {
@@ -35,6 +38,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login berhasil, token terbit.' })
   @ApiResponse({ status: 401, description: 'Kredensial atau password salah.' })
   @Public()
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {

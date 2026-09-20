@@ -1,25 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Download, Printer, BarChart3 } from 'lucide-react';
-import { useMonthlyReport } from '../hooks';
+import { useReportSummary } from '../hooks';
+import type { ReportGranularity } from '../schemas';
 import { ReportPeriodFilter } from './report-period-filter';
 import { ReportKpiGrid } from './report-kpi-grid';
 import { ReportCharts } from './report-charts';
 import { ReportBreakdownTable } from './report-breakdown-table';
-import { exportMonthlyReportToCsv } from '../csv-export';
+import { exportReportSummaryToCsv } from '../csv-export';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InlineAlert } from '@/components/ui/inline-alert';
 
+function getJakartaCurrentMonthBounds(): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { from, to };
+}
+
 export function AdminReportPageContent({
-  initialMonth,
-  initialYear,
+  initialGranularity,
+  initialFrom,
+  initialTo,
 }: {
-  initialMonth: number;
-  initialYear: number;
+  initialGranularity: ReportGranularity;
+  initialFrom: string;
+  initialTo: string;
 }) {
-  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
-  const [selectedYear, setSelectedYear] = useState(initialYear);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const currentGranularity = (searchParams.get('granularity') as ReportGranularity) || initialGranularity;
+  const currentFrom = searchParams.get('from') || initialFrom;
+  const currentTo = searchParams.get('to') || initialTo;
+
+  const validGranularity: ReportGranularity = ['day', 'week', 'month'].includes(currentGranularity)
+    ? currentGranularity
+    : 'month';
+
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  const fallback = getJakartaCurrentMonthBounds();
+  const validFrom = dateRegex.test(currentFrom) ? currentFrom : fallback.from;
+  const validTo = dateRegex.test(currentTo) ? currentTo : fallback.to;
+
+  const canonicalQuery = `granularity=${validGranularity}&from=${validFrom}&to=${validTo}`;
+
+  useEffect(() => {
+    const currentCanonical = `granularity=${searchParams.get('granularity') ?? ''}&from=${searchParams.get('from') ?? ''}&to=${searchParams.get('to') ?? ''}`;
+    if (currentCanonical !== canonicalQuery) {
+      router.replace(`/admin/reports?${canonicalQuery}`);
+    }
+  }, [canonicalQuery, router, searchParams]);
 
   const {
     data: report,
@@ -27,14 +63,19 @@ export function AdminReportPageContent({
     isError,
     error,
     refetch,
-  } = useMonthlyReport({
-    month: selectedMonth,
-    year: selectedYear,
+  } = useReportSummary({
+    granularity: validGranularity,
+    from: validFrom,
+    to: validTo,
   });
+
+  function handleFilterApply(params: { granularity: ReportGranularity; from: string; to: string }) {
+    router.replace(`/admin/reports?granularity=${params.granularity}&from=${params.from}&to=${params.to}`);
+  }
 
   function handleExportCsv() {
     if (report) {
-      exportMonthlyReportToCsv(report);
+      exportReportSummaryToCsv(report);
     }
   }
 
@@ -42,11 +83,8 @@ export function AdminReportPageContent({
     window.print();
   }
 
-  const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-  const currentMonthLabel = monthNames[selectedMonth - 1] || `Bulan-${selectedMonth}`;
+  const granularityLabel =
+    validGranularity === 'day' ? 'Harian' : validGranularity === 'week' ? 'Mingguan' : 'Bulanan';
 
   return (
     <div className="space-y-8 print:space-y-6">
@@ -55,13 +93,13 @@ export function AdminReportPageContent({
         <div>
           <div className="flex items-center gap-2 text-action-secondary font-bold text-xs uppercase tracking-wider">
             <BarChart3 size={16} aria-hidden="true" />
-            <span>Rekapitulasi Finansial</span>
+            <span>Rekapitulasi Finansial & Operasional</span>
           </div>
           <h1 className="font-ui text-2xl sm:text-3xl font-bold tracking-tight text-text-primary mt-1">
-            Laporan Operasional & Pendapatan
+            Laporan Kinerja Coworking Space
           </h1>
           <p className="text-xs sm:text-sm text-text-muted mt-0.5">
-            Periode: <strong>{currentMonthLabel} {selectedYear}</strong> (Zona Waktu Asia/Jakarta)
+            Periode: <strong>{validFrom} s/d {validTo}</strong> ({granularityLabel} · Zona Waktu Asia/Jakarta)
           </p>
         </div>
 
@@ -89,12 +127,12 @@ export function AdminReportPageContent({
         </div>
       </div>
 
-      {/* 2. Filter Periode */}
+      {/* 2. Filter Periode Multi-Granularity */}
       <ReportPeriodFilter
-        selectedMonth={selectedMonth}
-        onMonthChange={setSelectedMonth}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
+        granularity={validGranularity}
+        from={validFrom}
+        to={validTo}
+        onApply={handleFilterApply}
       />
 
       {/* 3. Error State */}
@@ -121,6 +159,7 @@ export function AdminReportPageContent({
               <Skeleton key={i} className="h-32 w-full rounded-card" />
             ))}
           </div>
+          <Skeleton className="h-72 w-full rounded-card" />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <Skeleton className="lg:col-span-7 h-72 w-full rounded-card" />
             <Skeleton className="lg:col-span-5 h-72 w-full rounded-card" />
@@ -133,13 +172,21 @@ export function AdminReportPageContent({
       {!isLoading && !isError && report ? (
         <div className="space-y-8 print:space-y-6">
           {/* KPI Cards Grid */}
-          <ReportKpiGrid report={report} />
+          <ReportKpiGrid totals={report.totals} />
 
-          {/* Visual Charts (Chart.js) */}
-          <ReportCharts items={report.rincian_per_tipe_space} />
+          {/* Visual Charts (Time-Series + Category Breakdown) */}
+          <ReportCharts
+            series={report.series}
+            typeBreakdown={report.rincian_per_tipe_space}
+            granularity={validGranularity}
+          />
 
-          {/* Breakdown Data Table */}
-          <ReportBreakdownTable items={report.rincian_per_tipe_space} />
+          {/* Breakdown Data Tables (Time-Series WCAG Table + Type Breakdown Table) */}
+          <ReportBreakdownTable
+            typeItems={report.rincian_per_tipe_space}
+            seriesItems={report.series}
+            granularity={validGranularity}
+          />
 
           <p className="text-[11px] text-text-muted text-center leading-relaxed print:text-left pt-2 border-t border-border-default/60">
             Catatan Finansial: Realisasi nilai layanan dihitung dari pemesanan yang telah berstatus <strong>Selesai</strong>. Estimasi bruto mencakup pemesanan disetujui, aktif, dan selesai pada periode bersangkutan.

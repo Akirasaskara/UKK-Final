@@ -6,7 +6,6 @@ const envSchema = z.object({
     .url('BACKEND_API_URL harus berupa URL yang valid.')
     .refine(
       (url) => {
-        // Izinkan http:// untuk localhost pada semua mode (dev & local build/test)
         const isLocal =
           url.includes('localhost') ||
           url.includes('127.0.0.1') ||
@@ -25,7 +24,14 @@ const envSchema = z.object({
 });
 
 function getEnv() {
-  const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:3000';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const rawUrl = process.env.BACKEND_API_URL;
+
+  if (isProduction && !rawUrl) {
+    throw new Error('BACKEND_API_URL environment variable wajib diisi pada mode production.');
+  }
+
+  const backendUrl = rawUrl || 'http://localhost:3000';
 
   return envSchema.parse({
     BACKEND_API_URL: backendUrl,

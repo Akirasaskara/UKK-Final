@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -39,13 +39,32 @@ export class CreateReservasiDto {
 export class HistoryQueryDto {
   @ApiPropertyOptional({ example: 9, description: 'Filter bulan kueri (1-12)', type: Number })
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Min(1)
+  @Max(12)
   @IsOptional()
   month?: number;
 
-  @ApiPropertyOptional({ example: 2026, description: 'Filter tahun kueri', type: Number })
+  @ApiPropertyOptional({ example: 2026, description: 'Filter tahun kueri (2000-2100)', type: Number })
   @Type(() => Number)
-  @IsNumber()
+  @IsInt()
+  @Min(2000)
+  @Max(2100)
   @IsOptional()
   year?: number;
+
+  @ApiPropertyOptional({ example: 1, default: 1, description: 'Halaman data (1-based)' })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  page?: number;
+
+  @ApiPropertyOptional({ example: 20, default: 20, description: 'Jumlah data per halaman (max 100)' })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  @IsOptional()
+  limit?: number;
 }

@@ -57,6 +57,26 @@ export const memberBookingSummarySchema = z.object({
 
 export const memberBookingListSchema = z.array(memberBookingSummarySchema);
 
+export const memberHistoryItemSchema = z.object({
+  id: z.number().int().positive(),
+  kode_booking: z.string(),
+  tanggal_reservasi: z.string(),
+  jam_mulai: z.string(),
+  jam_selesai: z.string(),
+  durasi_jam: z.number().int().positive(),
+  total_bayar: z.number().nonnegative(),
+  status: reservationStatusEnum,
+  space_name: z.string(),
+});
+
+export const memberHistorySchema = z.object({
+  month: z.number().int().min(1).max(12),
+  year: z.number().int().min(2000).max(2100),
+  total_reservasi: z.number().int().nonnegative(),
+  total_pengeluaran: z.number().nonnegative(),
+  items: z.array(memberHistoryItemSchema),
+});
+
 export const bookingDetailSchema = z.object({
   id: z.number().int().positive(),
   kode_booking: z.string(),
@@ -124,6 +144,8 @@ export const cancelBookingResultSchema = z.object({
 export type CreateBookingInput = z.infer<typeof createBookingInputSchema>;
 export type CreatedBookingResult = z.infer<typeof createdBookingResultSchema>;
 export type MemberBookingSummary = z.infer<typeof memberBookingSummarySchema>;
+export type MemberHistoryItem = z.infer<typeof memberHistoryItemSchema>;
+export type MemberHistory = z.infer<typeof memberHistorySchema>;
 export type BookingDetail = z.infer<typeof bookingDetailSchema>;
 export type ETicketData = z.infer<typeof eTicketSchema>;
 export type CancelBookingResult = z.infer<typeof cancelBookingResultSchema>;

@@ -2,14 +2,40 @@ import { apiClient } from '@/lib/api/client';
 import {
   monthlyReportResultSchema,
   incomeReportResultSchema,
+  reportSummaryResultSchema,
   type MonthlyReportResult,
   type IncomeReportResult,
+  type ReportSummaryResult,
+  type ReportGranularity,
 } from './schemas';
 
 export type ReportFilterParams = {
   month?: number;
   year?: number;
 };
+
+export type ReportSummaryParams = {
+  granularity: ReportGranularity;
+  from: string;
+  to: string;
+};
+
+export function getReportSummary(
+  params: ReportSummaryParams,
+  signal?: AbortSignal,
+): Promise<ReportSummaryResult> {
+  const query = new URLSearchParams({
+    granularity: params.granularity,
+    from: params.from,
+    to: params.to,
+  });
+
+  return apiClient.get(
+    `/api/admin/reports/summary?${query.toString()}`,
+    reportSummaryResultSchema,
+    { signal },
+  );
+}
 
 export function getMonthlyReport(
   params: ReportFilterParams = {},

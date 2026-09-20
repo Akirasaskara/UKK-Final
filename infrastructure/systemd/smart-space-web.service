@@ -1,0 +1,26 @@
+[Unit]
+Description=Smart Space Booking - Frontend Web (Next.js 16 Standalone)
+After=network.target smart-space-api.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/smart-space/web/current
+EnvironmentFile=/opt/smart-space/web/.env.production
+Environment=PORT=3100
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-space-web
+
+# Security Sandbox
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

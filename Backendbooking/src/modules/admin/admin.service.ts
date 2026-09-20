@@ -17,7 +17,16 @@ import {
   AdminMemberQueryDto,
   UpdateReservasiStatusDto,
   ReportQueryDto,
+  ReportSummaryQueryDto,
 } from './dto/admin.dto.js';
+import { getJakartaDateString } from '../../common/utils/time.util.js';
+import {
+  validateReportRange,
+  generateTimeBuckets,
+  findBucketIndex,
+  parseDateOnlyUtc,
+  formatDateOnlyUtc,
+} from '../../common/utils/report-period.util.js';
 
 @Injectable()
 export class AdminService {
@@ -87,7 +96,7 @@ export class AdminService {
     }
 
     const ownerId = user.spaceOwner.id;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getJakartaDateString();
     const todayDate = new Date(`${todayStr}T00:00:00.000Z`);
 
     const [
@@ -147,8 +156,8 @@ export class AdminService {
           durasi_jam: r.durasiJam,
           total_bayar: r.detail?.totalHarga || 0,
           status: r.status,
-          member_name: r.member?.namaMember ?? 'Member',
-          space_name: r.space?.namaSpace ?? 'Space',
+          member_name: r.detail?.namaMemberSnapshot ?? r.member?.namaMember ?? 'Member',
+          space_name: r.detail?.namaSpaceSnapshot ?? r.space?.namaSpace ?? 'Space',
         })),
         today_reservations: todayReservations.map((r) => ({
           id: r.id,
@@ -159,8 +168,8 @@ export class AdminService {
           durasi_jam: r.durasiJam,
           total_bayar: r.detail?.totalHarga || 0,
           status: r.status,
-          member_name: r.member?.namaMember ?? 'Member',
-          space_name: r.space?.namaSpace ?? 'Space',
+          member_name: r.detail?.namaMemberSnapshot ?? r.member?.namaMember ?? 'Member',
+          space_name: r.detail?.namaSpaceSnapshot ?? r.space?.namaSpace ?? 'Space',
         })),
       },
     };
@@ -449,20 +458,33 @@ export class AdminService {
         potongan_diskon: r.detail ? r.detail.potonganDiskon : 0n,
         total_bayar: r.detail ? r.detail.totalHarga : 0n,
         status: r.status,
-        member: r.member
+        member: r.detail
           ? {
-              id: r.member.id,
-              nama_member: r.member.namaMember,
-              telp: r.member.telp,
+              id: r.idMember,
+              nama_member: r.detail.namaMemberSnapshot,
+              telp: r.detail.telpMemberSnapshot,
+              instansi: r.detail.instansiMemberSnapshot,
             }
-          : null,
-        space: r.space
+          : r.member
+            ? {
+                id: r.member.id,
+                nama_member: r.member.namaMember,
+                telp: r.member.telp,
+              }
+            : null,
+        space: r.detail
           ? {
-              id: r.space.id,
-              nama_space: r.space.namaSpace,
-              tipe: r.space.tipe,
+              id: r.idSpace,
+              nama_space: r.detail.namaSpaceSnapshot,
+              tipe: r.detail.tipeSpaceSnapshot,
             }
-          : null,
+          : r.space
+            ? {
+                id: r.space.id,
+                nama_space: r.space.namaSpace,
+                tipe: r.space.tipe,
+              }
+            : null,
       };
     });
   }
@@ -472,36 +494,44 @@ export class AdminService {
       throw new ForbiddenException('Akses hanya untuk admin space');
     }
 
-    const resId = BigInt(id);
-    const existing = await this.prisma.reservation.findFirst({
-      where: {
-        id: resId,
-        idOwner: user.spaceOwner.id,
-      },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Reservasi tidak ditemukan');
-    }
-
     if (dto.status !== 'disetujui' && dto.status !== 'dibatalkan') {
       throw new BadRequestException(
         `Perubahan status manual hanya diizinkan untuk disetujui atau dibatalkan. Gunakan check-in/out untuk status aktif/selesai.`,
       );
     }
 
-    if (existing.status !== 'belum_dikonfirm' && existing.status !== 'disetujui') {
-      throw new BadRequestException(
-        `Status ${existing.status} tidak dapat diubah ke ${dto.status}!`,
-      );
-    }
-
-    const updated = await this.prisma.reservation.update({
-      where: { id: existing.id },
+    const resId = BigInt(id);
+    const result = await this.prisma.reservation.updateMany({
+      where: {
+        id: resId,
+        idOwner: user.spaceOwner.id,
+        status: { in: ['belum_dikonfirm', 'disetujui'] },
+      },
       data: {
         status: dto.status,
         version: { increment: 1 },
       },
+    });
+
+    if (result.count === 0) {
+      const existing = await this.prisma.reservation.findFirst({
+        where: {
+          id: resId,
+          idOwner: user.spaceOwner.id,
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Reservasi tidak ditemukan');
+      }
+
+      throw new ConflictException(
+        `Status ${existing.status} tidak dapat diubah ke ${dto.status} atau telah berubah oleh proses lain!`,
+      );
+    }
+
+    const updated = await this.prisma.reservation.findUniqueOrThrow({
+      where: { id: resId },
     });
 
     return {
@@ -520,31 +550,39 @@ export class AdminService {
     }
 
     const resId = BigInt(id);
-    const existing = await this.prisma.reservation.findFirst({
+    const now = new Date();
+    const result = await this.prisma.reservation.updateMany({
       where: {
         id: resId,
         idOwner: user.spaceOwner.id,
+        status: 'disetujui',
       },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Reservasi tidak ditemukan');
-    }
-
-    if (existing.status !== 'disetujui') {
-      throw new BadRequestException(
-        `Check-in hanya dapat dilakukan untuk reservasi yang sudah disetujui! Status saat ini: ${existing.status}`,
-      );
-    }
-
-    const now = new Date();
-    const updated = await this.prisma.reservation.update({
-      where: { id: existing.id },
       data: {
         status: 'aktif',
         checkInAt: now,
         version: { increment: 1 },
       },
+    });
+
+    if (result.count === 0) {
+      const existing = await this.prisma.reservation.findFirst({
+        where: {
+          id: resId,
+          idOwner: user.spaceOwner.id,
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Reservasi tidak ditemukan');
+      }
+
+      throw new ConflictException(
+        `Check-in hanya dapat dilakukan untuk reservasi yang sudah disetujui! Status saat ini: ${existing.status}`,
+      );
+    }
+
+    const updated = await this.prisma.reservation.findUniqueOrThrow({
+      where: { id: resId },
     });
 
     return {
@@ -563,31 +601,39 @@ export class AdminService {
     }
 
     const resId = BigInt(id);
-    const existing = await this.prisma.reservation.findFirst({
+    const now = new Date();
+    const result = await this.prisma.reservation.updateMany({
       where: {
         id: resId,
         idOwner: user.spaceOwner.id,
+        status: 'aktif',
       },
-    });
-
-    if (!existing) {
-      throw new NotFoundException('Reservasi tidak ditemukan');
-    }
-
-    if (existing.status !== 'aktif') {
-      throw new BadRequestException(
-        `Check-out hanya dapat dilakukan untuk reservasi yang sedang aktif! Status saat ini: ${existing.status}`,
-      );
-    }
-
-    const now = new Date();
-    const updated = await this.prisma.reservation.update({
-      where: { id: existing.id },
       data: {
         status: 'selesai',
         checkOutAt: now,
         version: { increment: 1 },
       },
+    });
+
+    if (result.count === 0) {
+      const existing = await this.prisma.reservation.findFirst({
+        where: {
+          id: resId,
+          idOwner: user.spaceOwner.id,
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Reservasi tidak ditemukan');
+      }
+
+      throw new ConflictException(
+        `Check-out hanya dapat dilakukan untuk reservasi yang sedang aktif! Status saat ini: ${existing.status}`,
+      );
+    }
+
+    const updated = await this.prisma.reservation.findUniqueOrThrow({
+      where: { id: resId },
     });
 
     return {
@@ -707,6 +753,174 @@ export class AdminService {
       month: report.month,
       year: report.year,
       realisasi_pendapatan_bersih: report.realisasi_pendapatan_bersih,
+    };
+  }
+
+  async getReportSummary(user: any, query: ReportSummaryQueryDto) {
+    if (!user?.spaceOwner?.id) {
+      throw new ForbiddenException('Akses hanya untuk admin space');
+    }
+
+    const validationError = validateReportRange(query.granularity, query.from, query.to);
+    if (validationError) {
+      throw new BadRequestException(validationError);
+    }
+
+    const buckets = generateTimeBuckets(query.granularity, query.from, query.to);
+    const startDate = parseDateOnlyUtc(query.from);
+    const endDateExclusive = new Date(parseDateOnlyUtc(query.to).getTime() + 24 * 60 * 60 * 1000);
+
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        idOwner: user.spaceOwner.id,
+        tanggalReservasi: {
+          gte: startDate,
+          lt: endDateExclusive,
+        },
+        status: {
+          in: ['disetujui', 'aktif', 'selesai'],
+        },
+      },
+      include: {
+        detail: true,
+      },
+      orderBy: [
+        { tanggalReservasi: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+
+    const seriesData = buckets.map((b) => ({
+      bucket_start: b.bucket_start,
+      bucket_end: b.bucket_end,
+      label: b.label,
+      total_transaksi: 0,
+      total_jam: 0,
+      estimasi_pendapatan_kotor: 0n,
+      total_potongan_diskon: 0n,
+      realisasi_pendapatan_bersih: 0n,
+    }));
+
+    let totalTransaksi = 0;
+    let totalJamTerpakai = 0;
+    let estimasiPendapatanKotor = 0n;
+    let totalPotonganDiskon = 0n;
+    let realisasiPendapatanBersih = 0n;
+
+    const typeSummary: Record<
+      string,
+      {
+        label: string;
+        totalBooking: number;
+        totalJam: number;
+        estimasiPendapatanBersih: bigint;
+        realisasiPendapatanBersih: bigint;
+      }
+    > = {
+      desk: {
+        label: 'Personal Desk',
+        totalBooking: 0,
+        totalJam: 0,
+        estimasiPendapatanBersih: 0n,
+        realisasiPendapatanBersih: 0n,
+      },
+      meeting_room: {
+        label: 'Meeting Room',
+        totalBooking: 0,
+        totalJam: 0,
+        estimasiPendapatanBersih: 0n,
+        realisasiPendapatanBersih: 0n,
+      },
+      private_office: {
+        label: 'Private Office',
+        totalBooking: 0,
+        totalJam: 0,
+        estimasiPendapatanBersih: 0n,
+        realisasiPendapatanBersih: 0n,
+      },
+    };
+
+    for (const r of reservations) {
+      const dateStr = formatDateOnlyUtc(r.tanggalReservasi);
+      const bucketIdx = findBucketIndex(buckets, dateStr);
+      const durasi = r.durasiJam;
+
+      totalTransaksi += 1;
+      totalJamTerpakai += durasi;
+
+      const kotor = r.detail ? r.detail.totalHargaAwal : 0n;
+      const potongan = r.detail ? r.detail.potonganDiskon : 0n;
+      const bersih = r.detail ? r.detail.totalHarga : 0n;
+      const isSelesai = r.status === 'selesai';
+
+      estimasiPendapatanKotor += kotor;
+      totalPotonganDiskon += potongan;
+      if (isSelesai) {
+        realisasiPendapatanBersih += bersih;
+      }
+
+      if (bucketIdx >= 0) {
+        seriesData[bucketIdx].total_transaksi += 1;
+        seriesData[bucketIdx].total_jam += durasi;
+        seriesData[bucketIdx].estimasi_pendapatan_kotor += kotor;
+        seriesData[bucketIdx].total_potongan_diskon += potongan;
+        if (isSelesai) {
+          seriesData[bucketIdx].realisasi_pendapatan_bersih += bersih;
+        }
+      }
+
+      if (r.detail) {
+        const tipe = r.detail.tipeSpaceSnapshot;
+        if (typeSummary[tipe]) {
+          typeSummary[tipe].totalBooking += 1;
+          typeSummary[tipe].totalJam += durasi;
+          typeSummary[tipe].estimasiPendapatanBersih += bersih;
+          if (isSelesai) {
+            typeSummary[tipe].realisasiPendapatanBersih += bersih;
+          }
+        }
+      }
+    }
+
+    return {
+      granularity: query.granularity,
+      from: query.from,
+      to: query.to,
+      timezone: 'Asia/Jakarta',
+      totals: {
+        total_transaksi: totalTransaksi,
+        total_jam_terpakai: totalJamTerpakai,
+        estimasi_pendapatan_kotor: estimasiPendapatanKotor,
+        total_potongan_diskon: totalPotonganDiskon,
+        realisasi_pendapatan_bersih: realisasiPendapatanBersih,
+      },
+      series: seriesData,
+      rincian_per_tipe_space: [
+        {
+          tipe: 'desk',
+          label: typeSummary.desk.label,
+          total_booking: typeSummary.desk.totalBooking,
+          total_jam: typeSummary.desk.totalJam,
+          estimasi_pendapatan_bersih: typeSummary.desk.estimasiPendapatanBersih,
+          realisasi_pendapatan_bersih: typeSummary.desk.realisasiPendapatanBersih,
+        },
+        {
+          tipe: 'meeting_room',
+          label: typeSummary.meeting_room.label,
+          total_booking: typeSummary.meeting_room.totalBooking,
+          total_jam: typeSummary.meeting_room.totalJam,
+          estimasi_pendapatan_bersih: typeSummary.meeting_room.estimasiPendapatanBersih,
+          realisasi_pendapatan_bersih: typeSummary.meeting_room.realisasiPendapatanBersih,
+        },
+        {
+          tipe: 'private_office',
+          label: typeSummary.private_office.label,
+          total_booking: typeSummary.private_office.totalBooking,
+          total_jam: typeSummary.private_office.totalJam,
+          estimasi_pendapatan_bersih: typeSummary.private_office.estimasiPendapatanBersih,
+          realisasi_pendapatan_bersih: typeSummary.private_office.realisasiPendapatanBersih,
+        },
+      ],
     };
   }
 }

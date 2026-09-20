@@ -3,6 +3,7 @@ import { getSessionToken } from '@/lib/auth/session';
 import { unauthorizedSessionResponse, noStoreResponse, gatewayErrorResponse } from '@/lib/auth/bff';
 import { fetchUpstream } from '@/lib/server/upstream';
 import { isSameOriginRequest, forbiddenOriginResponse } from '@/lib/auth/origin';
+import { normalizeMemberItem, normalizePaginatedEnvelope } from '@/lib/server/admin-compat';
 
 export async function GET(request: NextRequest): Promise<Response> {
   const token = await getSessionToken();
@@ -42,7 +43,28 @@ export async function GET(request: NextRequest): Promise<Response> {
       return noStoreResponse(body, upstreamResponse.status);
     }
 
-    return noStoreResponse(body, 200);
+    const requestedPage = page ? Number(page) : 1;
+    const requestedLimit = limit ? Math.min(Number(limit), 100) : 20;
+    const normalized = normalizePaginatedEnvelope(
+      body,
+      requestedPage,
+      requestedLimit,
+      normalizeMemberItem,
+    );
+    if (!normalized) {
+      return noStoreResponse(
+        {
+          status: false,
+          statusCode: 502,
+          message: 'Format respon member tidak sesuai kontrak.',
+          error: 'Bad Gateway',
+          timestamp: new Date().toISOString(),
+        },
+        502,
+      );
+    }
+
+    return noStoreResponse(normalized, 200);
   } catch (error: unknown) {
     return gatewayErrorResponse(error);
   }

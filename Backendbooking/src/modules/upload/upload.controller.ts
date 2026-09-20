@@ -9,6 +9,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadService } from './upload.service.js';
@@ -38,6 +39,7 @@ export class UploadController {
   @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Gambar (.jpg/.png/.webp, maksimum 5MB)' } } } })
   @ApiResponse({ status: 201, description: 'File umum berhasil diupload dan staged menuju storage' })
   @Roles('member', 'admin_space')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Post('image')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file', uploadOptions))
@@ -52,6 +54,7 @@ export class UploadController {
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Gambar fasilitas space (.jpg/.png/.webp, 5MB)' } } } })
   @Roles('admin_space')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Post('spaces')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file', uploadOptions))
@@ -62,10 +65,11 @@ export class UploadController {
     return this.uploadService.uploadSpace(file, user);
   }
 
-  @ApiOperation({ summary: 'Upload Avatar Foto Profil (Member & Admin)' })
+  @ApiOperation({ summary: 'Upload Foto Profil Akun Member (Admin / Member)' })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Foto portrait (.jpg/.png/.webp, 5MB)' } } } })
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary', description: 'Foto profil (.jpg/.png/.webp, 5MB)' } } } })
   @Roles('member', 'admin_space')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Post('members')
   @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file', uploadOptions))

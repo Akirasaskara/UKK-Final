@@ -69,9 +69,6 @@ export function AdminShell({ profile, children }: AdminShellProps) {
               className="flex items-center gap-2.5 overflow-hidden text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded"
               aria-label="Smart Space Booking Admin"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-action-primary text-xs font-bold text-text-on-brand tracking-wider">
-                SSB
-              </span>
               {!collapsed ? (
                 <div className="truncate text-left">
                   <p className="font-semibold text-sm leading-tight truncate">{coworkingName}</p>
@@ -230,7 +227,7 @@ export function AdminShell({ profile, children }: AdminShellProps) {
               className="w-full flex min-h-11 items-center justify-center gap-2 rounded-control bg-status-danger-bg text-status-danger-text text-xs font-semibold"
             >
               <LogOut size={16} aria-hidden="true" />
-              <span>Keluar Sesi</span>
+              <span>Keluar sesi</span>
             </button>
           </div>
         </div>

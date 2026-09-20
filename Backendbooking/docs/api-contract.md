@@ -258,6 +258,13 @@ Konvensi global:
 - **Sukses:** 200 `{month,year,realisasi_pendapatan_bersih}`. **Error:** 400, 401, 403, 500.
 - **Aturan:** alias memakai scope, periode, status, dan formula yang sama dengan EP-046.
 
+### API-EP-051 — `GET /api/admin/reports/summary` (Ekstensi Multi-Granularity)
+- **Auth/scope:** bearer `admin_space`; agregat bounded owner sendiri.
+- **Query:** `granularity` (`day|week|month`) wajib, `from` (YYYY-MM-DD) wajib, `to` (YYYY-MM-DD) wajib.
+- **Sukses:** 200 ReportSummary dengan `granularity,from,to,timezone,totals,series,rincian_per_tipe_space`.
+- **Error:** 400 (rentang tanggal/format/granularity invalid), 401, 403, 500.
+- **Aturan:** rentang harian maksimal 31 hari, mingguan maksimal 93 hari, bulanan maksimal 366 hari; time-series memuat zero-filled bucket untuk periode tanpa transaksi; estimasi mencakup `disetujui|aktif|selesai`, realisasi hanya `selesai`.
+
 ### API-EP-048 — `POST /api/upload/image`
 - **Auth/scope:** **lebih aman dari detail sumber:** bearer `member|admin_space`, tenant sama. **Header/body:** bearer + tenant key; `multipart/form-data`, field tunggal `file` binary JPEG/PNG/WebP.
 - **Sukses:** 201 `{filename,original_name,mimetype,size,url}`. **Error:** 400 file invalid, 401, 403, 413 >5 MiB, 429, 500.

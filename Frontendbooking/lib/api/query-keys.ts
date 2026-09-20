@@ -13,6 +13,8 @@ export type AvailabilityParams = {
 export type HistoryFilterParams = {
   month?: number;
   year?: number;
+  page?: number;
+  limit?: number;
 };
 
 export type AdminReservationFilterParams = {
@@ -66,6 +68,7 @@ export const queryKeys = {
       detail: (id: number) => ['admin', 'reservations', 'detail', id] as const,
     },
     reports: {
+      summary: (params: { granularity: string; from: string; to: string }) => ['admin', 'reports', 'summary', params] as const,
       monthly: (params: HistoryFilterParams = {}) => ['admin', 'reports', 'monthly', params] as const,
       income: (params: HistoryFilterParams = {}) => ['admin', 'reports', 'income', params] as const,
     },
