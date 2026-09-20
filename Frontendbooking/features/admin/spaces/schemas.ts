@@ -61,7 +61,8 @@ export const archiveSpaceResultSchema = z.object({
 
 export const spaceUploadResultSchema = z.object({
   filename: z.string(),
-  url: z.string(),
+  object_key: z.string().optional(),
+  url: z.string().url(),
 });
 
 export const spaceFormInputSchema = z.object({

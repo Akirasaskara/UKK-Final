@@ -1,7 +1,7 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { StorageService } from './storage.interface.js';
+import type { StoredFile, StorageService } from './storage.interface.js';
 
 @Injectable()
 export class S3StorageService implements StorageService {
@@ -21,7 +21,7 @@ export class S3StorageService implements StorageService {
     filename: string,
     buffer: Buffer,
     mimetype: string,
-  ): Promise<{ filename: string; url: string }> {
+  ): Promise<StoredFile> {
     if (!this.bucketName) {
       throw new Error('S3_BUCKET_NAME environment variable is required when STORAGE_DRIVER=s3');
     }
@@ -38,6 +38,7 @@ export class S3StorageService implements StorageService {
 
     return {
       filename,
+      objectKey: key,
       url: this.getPublicUrl(prefix, filename),
     };
   }
@@ -57,8 +58,9 @@ export class S3StorageService implements StorageService {
 
   getPublicUrl(prefix: string, filename: string): string {
     const key = `${prefix}/${filename}`;
-    return this.publicBaseUrl
-      ? `${this.publicBaseUrl}/${key}`
+    const baseUrl = this.publicBaseUrl.replace(/\/+$/, '');
+    return baseUrl
+      ? `${baseUrl}/${key}`
       : `https://${this.bucketName}.s3.amazonaws.com/${key}`;
   }
 }

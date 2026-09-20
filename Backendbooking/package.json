@@ -18,6 +18,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:reset": "tsx prisma/seed.ts --reset",
     "db:seed:pdf": "tsx prisma/generate-seed-pdf.ts",
+    "media:cleanup": "tsx src/scripts/cleanup-staged-media.ts",
     "test": "vitest run test/unit",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/backend-qa.spec.ts --hookTimeout=30000 --testTimeout=30000",
@@ -49,7 +50,8 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sharp": "^0.34.4"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",

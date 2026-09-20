@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
-import { StorageService } from './storage.interface.js';
+import type { StoredFile, StorageService } from './storage.interface.js';
 
 @Injectable()
 export class LocalStorageService implements StorageService {
@@ -25,7 +25,7 @@ export class LocalStorageService implements StorageService {
     filename: string,
     buffer: Buffer,
     _mimetype: string,
-  ): Promise<{ filename: string; url: string }> {
+  ): Promise<StoredFile> {
     const targetDir = path.join(this.baseUploadDir, prefix);
     this.ensureDir(targetDir);
 
@@ -35,7 +35,8 @@ export class LocalStorageService implements StorageService {
     const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
     return {
       filename,
-      url: `${baseUrl}/uploads/${prefix}/${filename}`,
+      objectKey: `${prefix}/${filename}`,
+      url: `${baseUrl.replace(/\/+$/, '')}/uploads/${prefix}/${filename}`,
     };
   }
 

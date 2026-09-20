@@ -54,7 +54,8 @@ export const createdMemberAssistedResultSchema = z.object({
 
 export const memberUploadResultSchema = z.object({
   filename: z.string(),
-  url: z.string(),
+  object_key: z.string().optional(),
+  url: z.string().url(),
 });
 
 export type AdminMemberListItem = z.infer<typeof adminMemberListItemSchema>;

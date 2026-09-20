@@ -72,8 +72,11 @@ export class AdminController {
   @ApiResponse({ status: 201, description: 'Pembuatan akun selesai (belum terlihat di list hingga reservasi pertama)' })
   @Post('members')
   @HttpCode(HttpStatus.CREATED)
-  createMemberAssisted(@Body() dto: CreateMemberAdminDto) {
-    return this.adminService.createMemberAssisted(dto);
+  createMemberAssisted(
+    @CurrentUser() user: any,
+    @Body() dto: CreateMemberAdminDto,
+  ) {
+    return this.adminService.createMemberAssisted(user, dto);
   }
 
   @ApiOperation({ summary: 'Detail Profil Member yang Sesuai Scope Reservasi (Admin)' })

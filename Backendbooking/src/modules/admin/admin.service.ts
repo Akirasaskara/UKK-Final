@@ -235,7 +235,10 @@ export class AdminService {
     };
   }
 
-  async createMemberAssisted(dto: CreateMemberAdminDto) {
+  async createMemberAssisted(user: any, dto: CreateMemberAdminDto) {
+    if (!user?.spaceOwner?.id) {
+      throw new ForbiddenException('Akses hanya untuk admin space');
+    }
     const existing = await this.prisma.user.findUnique({
       where: { username: dto.username },
     });
@@ -247,7 +250,27 @@ export class AdminService {
     const passwordHash = await argon2.hash(dto.password);
 
     return this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
+      const media = dto.foto
+        ? await tx.mediaUpload.findFirst({
+            where: {
+              objectKey: `members/${dto.foto}`,
+              ownerId: user.spaceOwner.id,
+              uploaderUserId: user.id,
+              purpose: 'member_photo',
+              status: 'staged',
+              deletedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+          })
+        : null;
+
+      if (dto.foto && !media) {
+        throw new BadRequestException(
+          'Foto member tidak valid, sudah digunakan, kedaluwarsa, atau bukan milik akun Anda.',
+        );
+      }
+
+      const createdUser = await tx.user.create({
         data: {
           username: dto.username,
           passwordHash,
@@ -257,7 +280,7 @@ export class AdminService {
 
       const member = await tx.member.create({
         data: {
-          idUser: user.id,
+          idUser: createdUser.id,
           roleGuard: 'member',
           namaMember: dto.nama_member.trim(),
           instansi: dto.instansi.trim(),
@@ -267,12 +290,9 @@ export class AdminService {
         },
       });
 
-      if (dto.foto) {
-        await tx.mediaUpload.updateMany({
-          where: {
-            objectKey: dto.foto,
-            purpose: 'member_photo',
-          },
+      if (media) {
+        await tx.mediaUpload.update({
+          where: { id: media.id },
           data: {
             status: 'attached',
             attachedEntityType: 'member',
@@ -357,6 +377,26 @@ export class AdminService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const media = dto.foto && dto.foto !== existing.foto
+        ? await tx.mediaUpload.findFirst({
+            where: {
+              objectKey: `members/${dto.foto}`,
+              ownerId: ownerId,
+              uploaderUserId: user.id,
+              purpose: 'member_photo',
+              status: 'staged',
+              deletedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+          })
+        : null;
+
+      if (dto.foto && dto.foto !== existing.foto && !media) {
+        throw new BadRequestException(
+          'Foto member tidak valid, sudah digunakan, kedaluwarsa, atau bukan milik akun Anda.',
+        );
+      }
+
       const res = await tx.member.update({
         where: { id: existing.id },
         data: {
@@ -368,12 +408,9 @@ export class AdminService {
         },
       });
 
-      if (dto.foto && dto.foto !== existing.foto) {
-        await tx.mediaUpload.updateMany({
-          where: {
-            objectKey: dto.foto,
-            purpose: 'member_photo',
-          },
+      if (media) {
+        await tx.mediaUpload.update({
+          where: { id: media.id },
           data: {
             status: 'attached',
             attachedEntityType: 'member',

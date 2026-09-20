@@ -256,6 +256,26 @@ export class SpacesService {
     }
 
     const space = await this.prisma.$transaction(async (tx) => {
+      const media = dto.foto
+        ? await tx.mediaUpload.findFirst({
+            where: {
+              objectKey: `spaces/${dto.foto}`,
+              ownerId: user.spaceOwner.id,
+              uploaderUserId: user.id,
+              purpose: 'space_photo',
+              status: 'staged',
+              deletedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+          })
+        : null;
+
+      if (dto.foto && !media) {
+        throw new BadRequestException(
+          'Foto space tidak valid, sudah digunakan, kedaluwarsa, atau bukan milik akun Anda.',
+        );
+      }
+
       const created = await tx.space.create({
         data: {
           idOwner: user.spaceOwner.id,
@@ -268,13 +288,9 @@ export class SpacesService {
         },
       });
 
-      if (dto.foto) {
-        await tx.mediaUpload.updateMany({
-          where: {
-            objectKey: dto.foto,
-            ownerId: user.spaceOwner.id,
-            purpose: 'space_photo',
-          },
+      if (media) {
+        await tx.mediaUpload.update({
+          where: { id: media.id },
           data: {
             status: 'attached',
             attachedEntityType: 'space',
@@ -359,6 +375,26 @@ export class SpacesService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const media = dto.foto && dto.foto !== existing.foto
+        ? await tx.mediaUpload.findFirst({
+            where: {
+              objectKey: `spaces/${dto.foto}`,
+              ownerId: user.spaceOwner.id,
+              uploaderUserId: user.id,
+              purpose: 'space_photo',
+              status: 'staged',
+              deletedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+          })
+        : null;
+
+      if (dto.foto && dto.foto !== existing.foto && !media) {
+        throw new BadRequestException(
+          'Foto space tidak valid, sudah digunakan, kedaluwarsa, atau bukan milik akun Anda.',
+        );
+      }
+
       const res = await tx.space.update({
         where: { id: existing.id },
         data: {
@@ -375,13 +411,9 @@ export class SpacesService {
         },
       });
 
-      if (dto.foto && dto.foto !== existing.foto) {
-        await tx.mediaUpload.updateMany({
-          where: {
-            objectKey: dto.foto,
-            ownerId: user.spaceOwner.id,
-            purpose: 'space_photo',
-          },
+      if (media) {
+        await tx.mediaUpload.update({
+          where: { id: media.id },
           data: {
             status: 'attached',
             attachedEntityType: 'space',

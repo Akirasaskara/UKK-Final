@@ -1,10 +1,16 @@
+export interface StoredFile {
+  filename: string;
+  objectKey: string;
+  url: string;
+}
+
 export interface StorageService {
   uploadFile(
     prefix: string,
     filename: string,
     buffer: Buffer,
     mimetype: string,
-  ): Promise<{ filename: string; url: string }>;
+  ): Promise<StoredFile>;
 
   deleteFile(objectKey: string): Promise<void>;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { useUploadSpacePhotoMutation } from '../hooks';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -22,6 +22,13 @@ export function SpaceImageUpload({
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentPhotoUrl || null);
   const [stagedFilename, setStagedFilename] = useState<string | null>(currentFilename || null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const localPreviewRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+    };
+  }, []);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -43,6 +50,8 @@ export function SpaceImageUpload({
 
     // Buat temporary local preview
     const localUrl = URL.createObjectURL(file);
+    if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+    localPreviewRef.current = localUrl;
     setPreviewUrl(localUrl);
 
     try {

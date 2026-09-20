@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, Inject } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as path from 'path';
+import sharp from 'sharp';
 import { PrismaService } from '../../database/prisma.service.js';
 import { STORAGE_SERVICE } from '../../infrastructure/storage/storage.module.js';
 import type { StorageService } from '../../infrastructure/storage/storage.interface.js';
@@ -21,8 +22,8 @@ export class UploadService {
     @Inject(STORAGE_SERVICE) private storage: StorageService,
   ) {}
 
-  private validateFile(file: UploadedFileDto) {
-    if (!file || !file.buffer) {
+  private async validateFile(file: UploadedFileDto) {
+    if (!file || !file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('File gambar wajib diunggah');
     }
 
@@ -33,32 +34,47 @@ export class UploadService {
       );
     }
 
-    const maxBytes = 5 * 1024 * 1024;
-    if (file.size > maxBytes) {
+    const maxBytes = Number(process.env.UPLOAD_MAX_BYTES || 5 * 1024 * 1024);
+    if (file.size < 1 || file.size > maxBytes) {
       throw new BadRequestException('Ukuran berkas maksimal 5MB');
     }
 
-    // Magic Bytes Verification
-    const buffer = file.buffer;
-    const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-    const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
-    const isWebp =
-      buffer.length >= 12 &&
-      buffer.toString('utf8', 0, 4) === 'RIFF' &&
-      buffer.toString('utf8', 8, 12) === 'WEBP';
+    try {
+      const metadata = await sharp(file.buffer, {
+        failOn: 'error',
+        limitInputPixels: 25_000_000,
+      }).metadata();
+      const expectedFormat = file.mimetype === 'image/jpeg'
+        ? 'jpeg'
+        : file.mimetype === 'image/png'
+          ? 'png'
+          : 'webp';
 
-    if (!isJpeg && !isPng && !isWebp) {
-      throw new BadRequestException('Format binary file gambar tidak valid');
+      if (metadata.format !== expectedFormat || !metadata.width || !metadata.height) {
+        throw new Error('Image format mismatch');
+      }
+      if (metadata.width > 6000 || metadata.height > 6000) {
+        throw new Error('Image dimensions exceed allowed bounds');
+      }
+    } catch {
+      throw new BadRequestException(
+        'Berkas gambar rusak, tidak lengkap, atau dimensinya melebihi batas yang diizinkan.',
+      );
     }
   }
 
   async uploadGeneral(file: UploadedFileDto, user: any) {
-    this.validateFile(file);
+    await this.validateFile(file);
 
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
     const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
 
-    const { url } = await this.storage.uploadFile('general', filename, file.buffer, file.mimetype);
+    const { objectKey, url } = await this.storage.uploadFile(
+      'general',
+      filename,
+      file.buffer,
+      file.mimetype,
+    );
 
     const checksum = crypto
       .createHash('sha256')
@@ -72,7 +88,7 @@ export class UploadService {
         data: {
           uploaderUserId: user.id,
           purpose: 'general',
-          objectKey: filename,
+          objectKey,
           originalName: file.originalname,
           mimeType: file.mimetype,
           sizeBytes: BigInt(file.size),
@@ -90,6 +106,7 @@ export class UploadService {
       message: 'File berhasil diupload',
       data: {
         filename,
+        object_key: objectKey,
         original_name: file.originalname,
         mimetype: file.mimetype,
         size: file.size,
@@ -99,12 +116,17 @@ export class UploadService {
   }
 
   async uploadSpace(file: UploadedFileDto, user: any) {
-    this.validateFile(file);
+    await this.validateFile(file);
 
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
     const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
 
-    const { url } = await this.storage.uploadFile('spaces', filename, file.buffer, file.mimetype);
+    const { objectKey, url } = await this.storage.uploadFile(
+      'spaces',
+      filename,
+      file.buffer,
+      file.mimetype,
+    );
 
     const checksum = crypto
       .createHash('sha256')
@@ -119,7 +141,7 @@ export class UploadService {
           uploaderUserId: user.id,
           ownerId: user.spaceOwner?.id || null,
           purpose: 'space_photo',
-          objectKey: filename,
+          objectKey,
           originalName: file.originalname,
           mimeType: file.mimetype,
           sizeBytes: BigInt(file.size),
@@ -137,18 +159,24 @@ export class UploadService {
       message: 'Foto space berhasil diupload',
       data: {
         filename,
+        object_key: objectKey,
         url,
       },
     };
   }
 
   async uploadMember(file: UploadedFileDto, user: any) {
-    this.validateFile(file);
+    await this.validateFile(file);
 
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
     const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
 
-    const { url } = await this.storage.uploadFile('members', filename, file.buffer, file.mimetype);
+    const { objectKey, url } = await this.storage.uploadFile(
+      'members',
+      filename,
+      file.buffer,
+      file.mimetype,
+    );
 
     const checksum = crypto
       .createHash('sha256')
@@ -161,8 +189,9 @@ export class UploadService {
       await this.prisma.mediaUpload.create({
         data: {
           uploaderUserId: user.id,
+          ownerId: user.spaceOwner?.id || null,
           purpose: 'member_photo',
-          objectKey: filename,
+          objectKey,
           originalName: file.originalname,
           mimeType: file.mimetype,
           sizeBytes: BigInt(file.size),
@@ -180,6 +209,7 @@ export class UploadService {
       message: 'Foto member berhasil diupload',
       data: {
         filename,
+        object_key: objectKey,
         url,
       },
     };
