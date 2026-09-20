@@ -31,6 +31,9 @@ uploads/
 *.seed
 *.pid.lock
 
+# Local-only HTTP API seeder; may contain deployment-specific fixture configuration
+Backendbooking/prisma/seed-api.ts
+
 logs/
 *.log
 coverage/
