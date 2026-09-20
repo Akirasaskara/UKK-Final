@@ -42,7 +42,7 @@ async function bootstrap() {
       if (!requestOrigin) return callback(null, true);
       if (!isProduction && corsRaw === '*') return callback(null, true);
       if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
-      return callback(new Error(`Origin ${requestOrigin} not allowed by CORS policy`), false);
+      return callback(null, false);
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
