@@ -29,17 +29,21 @@ export const spaceOwnerProfileSchema = z.object({
   deskripsi_fasilitas: z.string().nullable().optional(),
 });
 
-export const authProfileSchema = z.object({
-  id: z.number(),
-  username: z.string(),
-  role: roleSchema,
-  member: memberProfileSchema.nullable(),
-  space_owner: spaceOwnerProfileSchema.nullable(),
-});
+export const authProfileSchema = z
+  .object({
+    id: z.number(),
+    username: z.string(),
+    role: roleSchema,
+    member: memberProfileSchema.nullable().optional(),
+    space_owner: spaceOwnerProfileSchema.nullable().optional(),
+  })
+  .passthrough();
 
-export const upstreamAuthDataSchema = authProfileSchema.extend({
-  access_token: z.string().min(1),
-});
+export const upstreamAuthDataSchema = authProfileSchema
+  .extend({
+    access_token: z.string().min(1),
+  })
+  .passthrough();
 
 export const loginSchema = z.object({
   username: requiredText('Username'),
