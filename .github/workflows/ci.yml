@@ -44,3 +44,6 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+        env:
+          BACKEND_API_URL: http://localhost:3000
+          APP_URL: http://localhost:3000
