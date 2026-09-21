@@ -16,12 +16,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate deploy secrets
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
-          if [ -z "${{ secrets.EC2_HOST }}" ]; then echo "EC2_HOST is empty"; exit 1; fi
-          if [ -z "${{ secrets.EC2_USER }}" ]; then echo "EC2_USER is empty"; exit 1; fi
-          if [ -z "${{ secrets.EC2_SSH_PRIVATE_KEY }}" ]; then echo "EC2_SSH_PRIVATE_KEY is empty"; exit 1; fi
-          printf '%s' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | head -1 | grep -q "BEGIN.*PRIVATE KEY" || (echo "EC2_SSH_PRIVATE_KEY does not start with BEGIN PRIVATE KEY header"; exit 1)
-          echo "SSH key header valid"
+          set -e
+          test -n "$EC2_HOST" || { echo "EC2_HOST is empty"; exit 1; }
+          test -n "$EC2_USER" || { echo "EC2_USER is empty"; exit 1; }
+          test -n "$EC2_SSH_PRIVATE_KEY" || { echo "EC2_SSH_PRIVATE_KEY is empty"; exit 1; }
+          first_line="$(printf '%s\n' "$EC2_SSH_PRIVATE_KEY" | sed -n '1p')"
+          case "$first_line" in
+            "-----BEGIN "*PRIVATE" KEY-----")
+              echo "SSH key header valid"
+              ;;
+            *)
+              echo "EC2_SSH_PRIVATE_KEY is not a PEM/OpenSSH private key"
+              exit 1
+              ;;
+          esac
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
