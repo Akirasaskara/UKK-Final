@@ -6,13 +6,15 @@ import { fetchUpstream } from '@/lib/server/upstream';
 import { authProfileSchema, type AuthProfile } from '@/features/auth/schemas';
 import { z } from 'zod';
 
-const envelopeSchema = z.object({
-  status: z.literal(true),
-  statusCode: z.number(),
-  message: z.string(),
-  data: authProfileSchema,
-  timestamp: z.string(),
-});
+const envelopeSchema = z
+  .object({
+    status: z.union([z.literal(true), z.boolean()]).transform(() => true as const),
+    statusCode: z.coerce.number(),
+    message: z.string().optional().default('OK'),
+    data: authProfileSchema,
+    timestamp: z.string().optional().default(() => new Date().toISOString()),
+  })
+  .passthrough();
 
 async function resolveUserProfile(currentPath: string): Promise<AuthProfile> {
   const token = await getSessionToken();

@@ -6,8 +6,8 @@ export const adminMemberListItemSchema = z.object({
   instansi: z.string(),
   alamat: z.string(),
   telp: z.string(),
-  foto: z.string().nullable().optional(),
-  foto_url: z.string().nullable(),
+  foto: z.string().nullish(),
+  foto_url: z.string().nullish(),
   created_at: z.string().optional(),
 });
 
@@ -27,8 +27,8 @@ export const adminMemberDetailSchema = z.object({
   instansi: z.string(),
   alamat: z.string(),
   telp: z.string(),
-  foto: z.string().nullable().optional(),
-  foto_url: z.string().nullable(),
+  foto: z.string().nullish(),
+  foto_url: z.string().nullish(),
   created_at: z.string().optional(),
 });
 

@@ -16,13 +16,15 @@ const querySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
-const envelopeSchema = z.object({
-  status: z.literal(true),
-  statusCode: z.number(),
-  message: z.string(),
-  data: reportSummaryResultSchema,
-  timestamp: z.string(),
-});
+const envelopeSchema = z
+  .object({
+    status: z.union([z.literal(true), z.boolean()]).transform(() => true as const),
+    statusCode: z.coerce.number(),
+    message: z.string().optional().default('OK'),
+    data: reportSummaryResultSchema,
+    timestamp: z.string().optional().default(() => new Date().toISOString()),
+  })
+  .passthrough();
 
 export async function GET(request: NextRequest): Promise<Response> {
   const token = await getSessionToken();

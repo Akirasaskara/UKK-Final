@@ -18,8 +18,8 @@ const reservationSchema = z.object({
   durasi_jam: z.number(),
   total_bayar: z.number(),
   status: statusSchema,
-  member: z.object({ nama_member: z.string() }).nullable(),
-  space: z.object({ nama_space: z.string() }).nullable(),
+  member: z.object({ nama_member: z.string() }).nullish(),
+  space: z.object({ nama_space: z.string() }).nullish(),
 });
 
 function unwrapItems(body: unknown): unknown[] | null {

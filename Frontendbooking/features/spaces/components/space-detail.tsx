@@ -70,7 +70,7 @@ export function SpaceDetailPageContent({ spaceId }: { spaceId: number }) {
         <div className="lg:col-span-7 space-y-8">
           <div className="relative aspect-[16/10] w-full overflow-hidden rounded-card border border-border-default bg-bg-subtle shadow-card">
             <WorkspaceImage
-              src={space.foto_url}
+              src={space.foto_url ?? null}
               alt={`Foto utama ${space.nama_space}`}
               className="h-full w-full object-cover"
             />

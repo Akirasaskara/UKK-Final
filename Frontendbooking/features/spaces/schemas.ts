@@ -21,11 +21,11 @@ export const publicSpaceSchema = z.object({
   harga_per_jam: z.number().int().nonnegative(),
   tipe: spaceTypeEnum,
   kapasitas: z.number().int().positive(),
-  foto: z.string().nullable(),
+  foto: z.string().nullish(),
   deskripsi: z.string(),
   id_owner: z.number().int().positive(),
-  owner: spaceOwnerSummarySchema.nullable(),
-  foto_url: z.string().nullable(),
+  owner: spaceOwnerSummarySchema.nullish(),
+  foto_url: z.string().nullish(),
 });
 
 export const publicSpaceListSchema = z.array(publicSpaceSchema);

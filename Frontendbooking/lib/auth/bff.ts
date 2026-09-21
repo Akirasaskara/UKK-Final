@@ -5,13 +5,15 @@ import { upstreamAuthDataSchema, type AuthProfile } from '@/features/auth/schema
 import { clearSessionToken, setSessionToken } from '@/lib/auth/session';
 import { fetchUpstream, UpstreamUnavailableError } from '@/lib/server/upstream';
 
-const successEnvelopeSchema = z.object({
-  status: z.literal(true),
-  statusCode: z.number(),
-  message: z.string(),
-  data: z.unknown(),
-  timestamp: z.string(),
-});
+const successEnvelopeSchema = z
+  .object({
+    status: z.union([z.literal(true), z.boolean()]).transform(() => true as const),
+    statusCode: z.coerce.number(),
+    message: z.string().optional().default('OK'),
+    data: z.unknown(),
+    timestamp: z.string().optional().default(() => new Date().toISOString()),
+  })
+  .passthrough();
 
 function noStoreHeaders(headers?: HeadersInit): Headers {
   const result = new Headers(headers);

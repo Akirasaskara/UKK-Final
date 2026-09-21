@@ -105,7 +105,7 @@ export function AdminSpaceDetailPageContent({ spaceId }: { spaceId: number }) {
           <div className="lg:col-span-5">
             <div className="relative aspect-[16/10] w-full overflow-hidden rounded-card border border-border-default bg-bg-subtle">
               <WorkspaceImage
-                src={space.foto_url}
+                src={space.foto_url ?? null}
                 alt={`Foto ${space.nama_space}`}
                 className="h-full w-full object-cover"
               />

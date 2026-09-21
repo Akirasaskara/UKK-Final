@@ -157,7 +157,7 @@ export function AdminSpaceListPageContent() {
                       <td className="p-3.5">
                         <div className="h-12 w-16 overflow-hidden rounded-md bg-bg-subtle border border-border-default">
                           <WorkspaceImage
-                            src={space.foto_url}
+                            src={space.foto_url ?? null}
                             alt={space.nama_space}
                             className="h-full w-full object-cover"
                           />
@@ -213,7 +213,7 @@ export function AdminSpaceListPageContent() {
                   <div className="flex items-start gap-3">
                     <div className="h-16 w-20 shrink-0 overflow-hidden rounded-md bg-bg-subtle border border-border-default">
                       <WorkspaceImage
-                        src={space.foto_url}
+                        src={space.foto_url ?? null}
                         alt={space.nama_space}
                         className="h-full w-full object-cover"
                       />

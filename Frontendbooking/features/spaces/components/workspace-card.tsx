@@ -14,7 +14,7 @@ export function WorkspaceCard({ space }: WorkspaceCardProps) {
     <article className="group flex flex-col overflow-hidden rounded-card border border-border-default bg-bg-surface shadow-card transition-all duration-200 hover:-translate-y-1 hover:border-border-strong">
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-bg-subtle">
         <WorkspaceImage
-          src={space.foto_url}
+          src={space.foto_url ?? null}
           alt={`Foto ruang kerja ${space.nama_space}`}
           className="h-full w-full transition-transform duration-300 group-hover:scale-105"
         />

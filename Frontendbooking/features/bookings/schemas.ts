@@ -24,7 +24,7 @@ export const createdBookingResultSchema = z.object({
   kode_booking: z.string(),
   id_member: z.number().int().positive(),
   id_space: z.number().int().positive(),
-  id_diskon: z.number().nullable(),
+  id_diskon: z.number().nullish(),
   tanggal_reservasi: z.string(),
   jam_mulai: z.string(),
   jam_selesai: z.string(),
@@ -52,7 +52,7 @@ export const memberBookingSummarySchema = z.object({
       nama_space: z.string(),
       tipe: z.string(),
     })
-    .nullable(),
+    .nullish(),
 });
 
 export const memberBookingListSchema = z.array(memberBookingSummarySchema);
@@ -93,13 +93,13 @@ export const bookingDetailSchema = z.object({
       nama_member: z.string(),
       telp: z.string(),
     })
-    .nullable(),
+    .nullish(),
   space: z
     .object({
       nama_space: z.string(),
       harga_per_jam: z.number(),
     })
-    .nullable(),
+    .nullish(),
 });
 
 export const eTicketSchema = z.object({

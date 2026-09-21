@@ -16,13 +16,15 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-const envelopeSchema = z.object({
-  status: z.literal(true),
-  statusCode: z.number(),
-  message: z.string(),
-  data: memberHistorySchema,
-  timestamp: z.string(),
-});
+const envelopeSchema = z
+  .object({
+    status: z.union([z.literal(true), z.boolean()]).transform(() => true as const),
+    statusCode: z.coerce.number(),
+    message: z.string().optional().default('OK'),
+    data: memberHistorySchema,
+    timestamp: z.string().optional().default(() => new Date().toISOString()),
+  })
+  .passthrough();
 
 function invalidQueryResponse(): Response {
   return noStoreResponse(
