@@ -34,8 +34,8 @@ jobs:
             npm run build
             pm2 restart bookingin-backend --update-env || pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart all --update-env
             sleep 5
-            curl -fsS https://api.fallingforyou.my.id/health
-            curl -fsS https://api.fallingforyou.my.id/ready
+            curl -fsS ${{ secrets.HEALTHCHECK_URL }}/health
+            curl -fsS ${{ secrets.HEALTHCHECK_URL }}/ready
             cd ../Frontendbooking
             git pull origin main
             npm ci
@@ -46,4 +46,4 @@ jobs:
             cp .env.production .next/standalone/.env.production
             pm2 restart bookingin-frontend --update-env || pm2 delete bookingin-frontend; pm2 start ecosystem.config.cjs; pm2 save
             sleep 3
-            curl -fsS https://fallingforyou.my.id/ | head -5
+            curl -fsS ${{ secrets.FRONTEND_URL }}/ | head -5
