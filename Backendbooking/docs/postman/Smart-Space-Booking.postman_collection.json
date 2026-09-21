@@ -48,6 +48,37 @@
               "body": "{\n  \"status\": true,\n  \"statusCode\": 200,\n  \"message\": \"Berhasil memproses permintaan\",\n  \"data\": {\n    \"status\": \"ok\",\n    \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n  },\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
             }
           ]
+        },
+        {
+          "name": "GET /ready (Readiness Probe — DB Connected)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/ready", "host": ["{{baseUrl}}"], "path": ["ready"] }
+          },
+          "response": [
+            {
+              "name": "200 Ready",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/ready", "host": ["{{baseUrl}}"], "path": ["ready"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": true,\n  \"statusCode\": 200,\n  \"message\": \"Layanan siap menerima trafik\",\n  \"data\": {\n    \"status\": \"ready\",\n    \"database\": \"connected\",\n    \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n  },\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
+            },
+            {
+              "name": "503 Not Ready",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{baseUrl}}/ready", "host": ["{{baseUrl}}"], "path": ["ready"] }
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": false,\n  \"statusCode\": 503,\n  \"message\": \"Database belum siap atau koneksi terputus\",\n  \"error\": \"Service Unavailable\",\n  \"timestamp\": \"2026-09-17T07:00:00.000Z\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -442,7 +473,8 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{memberToken}}" }
+              { "key": "Authorization", "value": "Bearer {{memberToken}}" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
             ],
             "body": {
               "mode": "raw",
@@ -465,12 +497,14 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{memberToken}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/reservasi/my/history?month=9&year=2026",
+              "raw": "{{baseUrl}}/api/reservasi/my/history?month=9&year=2026&page=1&limit=20",
               "host": ["{{baseUrl}}"],
               "path": ["api", "reservasi", "my", "history"],
               "query": [
                 { "key": "month", "value": "9" },
-                { "key": "year", "value": "2026" }
+                { "key": "year", "value": "2026" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
               ]
             }
           }
@@ -549,10 +583,14 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/members?search=Budi",
+              "raw": "{{baseUrl}}/api/admin/members?search=Budi&page=1&limit=20",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "members"],
-              "query": [{ "key": "search", "value": "Budi" }]
+              "query": [
+                { "key": "search", "value": "Budi" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
             }
           }
         },
@@ -615,12 +653,15 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/reservasi?status=belum_dikonfirm&tanggal=2026-09-30",
+              "raw": "{{baseUrl}}/api/admin/reservasi?status=belum_dikonfirm&tanggal=2026-09-30&id_space={{spaceId}}&month=9&year=2026",
               "host": ["{{baseUrl}}"],
               "path": ["api", "admin", "reservasi"],
               "query": [
                 { "key": "status", "value": "belum_dikonfirm" },
-                { "key": "tanggal", "value": "2026-09-30" }
+                { "key": "tanggal", "value": "2026-09-30" },
+                { "key": "id_space", "value": "{{spaceId}}" },
+                { "key": "month", "value": "9" },
+                { "key": "year", "value": "2026" }
               ]
             }
           }
@@ -684,6 +725,83 @@
               "query": [
                 { "key": "month", "value": "9" },
                 { "key": "year", "value": "2026" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/admin/dashboard (Admin Dashboard Summary)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/api/admin/dashboard", "host": ["{{baseUrl}}"], "path": ["api", "admin", "dashboard"] }
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": true,\n  \"statusCode\": 200,\n  \"message\": \"Ringkasan dashboard berhasil dimuat\",\n  \"data\": {\n    \"metrics\": {\n      \"pending_reservations\": 2,\n      \"active_reservations\": 1,\n      \"active_spaces\": 6,\n      \"total_members\": 3\n    },\n    \"pending_queue\": [\n      {\n        \"id\": 3,\n        \"kode_booking\": \"BOOK-20260930-XXXX\",\n        \"tanggal_reservasi\": \"2026-09-30\",\n        \"jam_mulai\": \"09:00\",\n        \"jam_selesai\": \"13:00\",\n        \"durasi_jam\": 4,\n        \"total_bayar\": 90000,\n        \"status\": \"belum_dikonfirm\",\n        \"member_name\": \"Andi Saputra\",\n        \"space_name\": \"Focus Desk A1\"\n      }\n    ],\n    \"today_reservations\": []\n  },\n  \"timestamp\": \"2026-09-20T00:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/reports/summary (Multi-Granularity — Month)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/summary?granularity=month&from=2026-09-01&to=2026-09-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "summary"],
+              "query": [
+                { "key": "granularity", "value": "month" },
+                { "key": "from", "value": "2026-09-01" },
+                { "key": "to", "value": "2026-09-30" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 Success",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": true,\n  \"statusCode\": 200,\n  \"message\": \"Berhasil memproses permintaan\",\n  \"data\": {\n    \"granularity\": \"month\",\n    \"from\": \"2026-09-01\",\n    \"to\": \"2026-09-30\",\n    \"timezone\": \"Asia/Jakarta\",\n    \"totals\": {\n      \"total_transaksi\": 5,\n      \"total_jam_terpakai\": 20,\n      \"estimasi_pendapatan_kotor\": 500000,\n      \"total_potongan_diskon\": 50000,\n      \"realisasi_pendapatan_bersih\": 100000\n    },\n    \"series\": [],\n    \"rincian_per_tipe_space\": []\n  },\n  \"timestamp\": \"2026-09-20T00:00:00.000Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /api/admin/reports/summary (Multi-Granularity — Day)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/summary?granularity=day&from=2026-09-01&to=2026-09-10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "summary"],
+              "query": [
+                { "key": "granularity", "value": "day" },
+                { "key": "from", "value": "2026-09-01" },
+                { "key": "to", "value": "2026-09-10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/admin/reports/summary (Multi-Granularity — Week)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reports/summary?granularity=week&from=2026-09-01&to=2026-10-26",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reports", "summary"],
+              "query": [
+                { "key": "granularity", "value": "week" },
+                { "key": "from", "value": "2026-09-01" },
+                { "key": "to", "value": "2026-10-26" }
               ]
             }
           }
