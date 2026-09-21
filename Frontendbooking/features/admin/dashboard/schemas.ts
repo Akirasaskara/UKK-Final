@@ -21,11 +21,13 @@ export const dashboardQueueItemSchema = z.object({
   space_name: z.string(),
 });
 
-export const dashboardSummarySchema = z.object({
-  metrics: dashboardMetricsSchema,
-  pending_queue: z.array(dashboardQueueItemSchema),
-  today_reservations: z.array(dashboardQueueItemSchema),
-});
+export const dashboardSummarySchema = z
+  .object({
+    metrics: dashboardMetricsSchema,
+    pending_queue: z.array(dashboardQueueItemSchema),
+    today_reservations: z.array(dashboardQueueItemSchema),
+  })
+  .passthrough();
 
 export type DashboardMetrics = z.infer<typeof dashboardMetricsSchema>;
 export type DashboardQueueItem = z.infer<typeof dashboardQueueItemSchema>;

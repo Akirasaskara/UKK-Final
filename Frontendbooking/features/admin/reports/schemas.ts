@@ -33,15 +33,17 @@ export const reportTypeBreakdownItemSchema = z.object({
   total_pendapatan: z.number().int().nonnegative().optional(),
 });
 
-export const reportSummaryResultSchema = z.object({
-  granularity: reportGranularityEnum,
-  from: z.string(),
-  to: z.string(),
-  timezone: z.string(),
-  totals: reportTotalsSchema,
-  series: z.array(reportSeriesItemSchema),
-  rincian_per_tipe_space: z.array(reportTypeBreakdownItemSchema),
-});
+export const reportSummaryResultSchema = z
+  .object({
+    granularity: reportGranularityEnum,
+    from: z.string(),
+    to: z.string(),
+    timezone: z.string(),
+    totals: reportTotalsSchema,
+    series: z.array(reportSeriesItemSchema),
+    rincian_per_tipe_space: z.array(reportTypeBreakdownItemSchema),
+  })
+  .passthrough();
 
 export const monthlyReportResultSchema = z.object({
   month: z.number().int().min(1).max(12),

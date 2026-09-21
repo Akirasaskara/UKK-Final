@@ -15,18 +15,20 @@ export const spaceOwnerSummarySchema = z.object({
   telp: z.string().optional(),
 });
 
-export const publicSpaceSchema = z.object({
-  id: z.number().int().positive(),
-  nama_space: z.string(),
-  harga_per_jam: z.number().int().nonnegative(),
-  tipe: spaceTypeEnum,
-  kapasitas: z.number().int().positive(),
-  foto: z.string().nullish(),
-  deskripsi: z.string(),
-  id_owner: z.number().int().positive(),
-  owner: spaceOwnerSummarySchema.nullish(),
-  foto_url: z.string().nullish(),
-});
+export const publicSpaceSchema = z
+  .object({
+    id: z.number().int().positive(),
+    nama_space: z.string(),
+    harga_per_jam: z.number().int().nonnegative(),
+    tipe: spaceTypeEnum,
+    kapasitas: z.number().int().positive(),
+    foto: z.string().nullish(),
+    deskripsi: z.string(),
+    id_owner: z.number().int().positive(),
+    owner: spaceOwnerSummarySchema.nullish(),
+    foto_url: z.string().nullish(),
+  })
+  .passthrough();
 
 export const publicSpaceListSchema = z.array(publicSpaceSchema);
 export const spaceTypeListSchema = z.array(spaceTypeItemSchema);
@@ -39,7 +41,7 @@ export const availabilityQuerySchema = z.object({
 });
 
 export const availabilityResultSchema = z.object({
-  available: z.literal(true),
+  available: z.boolean(),
   id_space: z.number().int().positive(),
   nama_space: z.string(),
   tanggal: z.string(),
