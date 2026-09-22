@@ -56,6 +56,14 @@ jobs:
             npm run build
             pm2 restart bookingin-backend --update-env || pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart all --update-env
             sleep 5
+            echo "PM2 status:"
+            pm2 status
+            echo "Backend logs:"
+            pm2 logs bookingin-backend --lines 100 --nostream || true
+            echo "Listening ports:"
+            sudo ss -ltnp || ss -ltnp || true
+            echo "Local health check (bypass Nginx):"
+            curl -v --fail-with-body http://127.0.0.1:3000/health
             curl -fsS ${{ secrets.HEALTHCHECK_URL }}/health
             curl -fsS ${{ secrets.HEALTHCHECK_URL }}/ready
             cd ../Frontendbooking
