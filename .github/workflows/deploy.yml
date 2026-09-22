@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+
   workflow_dispatch:
 
 concurrency:
@@ -14,6 +15,7 @@ jobs:
   deploy:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
+
     steps:
       - name: Validate deploy secrets
         env:
@@ -22,10 +24,24 @@ jobs:
           EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
         run: |
           set -e
-          test -n "$EC2_HOST" || { echo "EC2_HOST is empty"; exit 1; }
-          test -n "$EC2_USER" || { echo "EC2_USER is empty"; exit 1; }
-          test -n "$EC2_SSH_PRIVATE_KEY" || { echo "EC2_SSH_PRIVATE_KEY is empty"; exit 1; }
+
+          test -n "$EC2_HOST" || {
+            echo "EC2_HOST is empty"
+            exit 1
+          }
+
+          test -n "$EC2_USER" || {
+            echo "EC2_USER is empty"
+            exit 1
+          }
+
+          test -n "$EC2_SSH_PRIVATE_KEY" || {
+            echo "EC2_SSH_PRIVATE_KEY is empty"
+            exit 1
+          }
+
           first_line="$(printf '%s\n' "$EC2_SSH_PRIVATE_KEY" | sed -n '1p')"
+
           case "$first_line" in
             "-----BEGIN "*PRIVATE" KEY-----")
               echo "SSH key header valid"
@@ -35,47 +51,196 @@ jobs:
               exit 1
               ;;
           esac
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
           script: |
             set -euxo pipefail
+
             APP_DIR="${{ secrets.EC2_APP_DIR }}"
-            if [ -z "$APP_DIR" ]; then APP_DIR="/home/ubuntu/UKK-Final"; fi
+
+            if [ -z "$APP_DIR" ]; then
+              APP_DIR="/home/ubuntu/UKK-Final"
+            fi
+
             echo "Deploy dir: $APP_DIR"
+
+            # Load NVM / Node.js
+            export NVM_DIR="$HOME/.nvm"
+
+            if [ -s "$NVM_DIR/nvm.sh" ]; then
+              . "$NVM_DIR/nvm.sh"
+              nvm use 24
+            fi
+
+            node --version
+            npm --version
+            pm2 --version
+
+            # Sync repository
+            cd "$APP_DIR"
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "Repository synced to origin/main"
+
+            # =========================================================
+            # BACKEND
+            # =========================================================
+
             cd "$APP_DIR/Backendbooking"
-            git pull --ff-only origin main
-            node --version; npm --version
+
+            echo "=== Backend: install dependencies ==="
+
             test -f package-lock.json
-            npm ci --loglevel verbose
+
+            npm ci --no-audit --no-fund
+
+            echo "=== Backend: Prisma generate ==="
+
             npx prisma generate
+
+            echo "=== Backend: Prisma migrate ==="
+
             npx prisma migrate deploy
+
+            echo "=== Backend: build ==="
+
             npm run build
-            pm2 restart bookingin-backend --update-env || pm2 start ecosystem.config.cjs 2>/dev/null || pm2 restart all --update-env
-            sleep 5
-            echo "PM2 status:"
+
+            echo "=== Backend: restart PM2 ==="
+
+            pm2 delete bookingin-backend || true
+
+            pm2 start "$APP_DIR/Backendbooking/dist/main.js" \
+              --name bookingin-backend
+
+            echo "=== Backend: PM2 status ==="
+
             pm2 status
-            echo "Backend logs:"
-            pm2 logs bookingin-backend --lines 100 --nostream || true
-            echo "Listening ports:"
-            sudo ss -ltnp || ss -ltnp || true
-            echo "Local health check (bypass Nginx):"
-            curl -v --fail-with-body http://127.0.0.1:3000/health
-            curl -fsS ${{ secrets.HEALTHCHECK_URL }}/health
-            curl -fsS ${{ secrets.HEALTHCHECK_URL }}/ready
-            cd ../Frontendbooking
-            git pull --ff-only origin main
-            node --version; npm --version
+
+            # Wait until backend is actually ready
+            echo "=== Waiting for backend ==="
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1; then
+                echo "Backend is healthy"
+                break
+              fi
+
+              if [ "$i" -eq 30 ]; then
+                echo "Backend failed to become healthy"
+
+                pm2 status
+                pm2 logs bookingin-backend --lines 100 --nostream || true
+
+                exit 1
+              fi
+
+              echo "Backend not ready yet... attempt $i/30"
+              sleep 2
+            done
+
+            echo "=== Backend health ==="
+
+            curl -fsS http://127.0.0.1:3000/health
+
+            echo
+            echo "=== Backend readiness ==="
+
+            curl -fsS http://127.0.0.1:3000/ready
+
+            echo
+
+            # Optional public backend health checks
+            if [ -n "${{ secrets.HEALTHCHECK_URL }}" ]; then
+              echo "=== Public backend health ==="
+
+              curl -fsS "${{ secrets.HEALTHCHECK_URL }}/health"
+
+              echo
+
+              echo "=== Public backend readiness ==="
+
+              curl -fsS "${{ secrets.HEALTHCHECK_URL }}/ready"
+
+              echo
+            fi
+
+            # =========================================================
+            # FRONTEND
+            # =========================================================
+
+            cd "$APP_DIR/Frontendbooking"
+
+            echo "=== Frontend: install dependencies ==="
+
             test -f package-lock.json
-            npm ci --loglevel verbose
+
+            npm ci --no-audit --no-fund
+
+            echo "=== Frontend: clean previous build ==="
+
             rm -rf .next
+
+            echo "=== Frontend: build ==="
+
             npm run build
-            cp -r .next/static .next/standalone/.next/static
-            cp -r public .next/standalone/public
-            cp .env.production .next/standalone/.env.production
-            pm2 restart bookingin-frontend --update-env || pm2 delete bookingin-frontend; pm2 start ecosystem.config.cjs; pm2 save
-            sleep 3
-            curl -fsS ${{ secrets.FRONTEND_URL }}/ | head -5
+
+            echo "=== Frontend: restart PM2 ==="
+
+            pm2 delete bookingin-frontend || true
+
+            pm2 start npm \
+              --name bookingin-frontend \
+              -- start -- -p 3001
+
+            echo "=== Frontend: PM2 status ==="
+
+            pm2 status
+
+            # Wait until frontend is ready
+            echo "=== Waiting for frontend ==="
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:3001/ >/dev/null 2>&1; then
+                echo "Frontend is healthy"
+                break
+              fi
+
+              if [ "$i" -eq 30 ]; then
+                echo "Frontend failed to become healthy"
+
+                pm2 status
+                pm2 logs bookingin-frontend --lines 100 --nostream || true
+
+                exit 1
+              fi
+
+              echo "Frontend not ready yet... attempt $i/30"
+              sleep 2
+            done
+
+            echo "=== Frontend local health ==="
+
+            curl -fsS http://127.0.0.1:3001/ >/dev/null
+
+            # Optional public frontend health check
+            if [ -n "${{ secrets.FRONTEND_URL }}" ]; then
+              echo "=== Frontend public health ==="
+
+              curl -fsS "${{ secrets.FRONTEND_URL }}/" >/dev/null
+            fi
+
+            # Save PM2 process list
+            pm2 save
+
+            echo "===================================="
+            echo "Deployment completed successfully"
+            echo "===================================="
