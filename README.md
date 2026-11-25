@@ -13,10 +13,10 @@ Frontendbooking/  Next.js App Router, React, TypeScript, Tailwind CSS
 
 ```bash
 cd Backendbooking
-npm install
+bun install
 cp .env.example .env
-npx prisma generate
-npm run start:dev
+bunx prisma generate
+bun run start:dev
 ```
 
 API lokal berjalan pada `http://localhost:3000`.
@@ -29,8 +29,8 @@ Dokumentasi backend tersedia di `Backendbooking/docs`.
 
 ```bash
 cd Frontendbooking
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 Frontend lokal berjalan pada `http://localhost:3000` secara default. Gunakan port berbeda ketika backend juga berjalan lokal.
@@ -41,12 +41,12 @@ Dokumentasi frontend tersedia di `Frontendbooking/docs`.
 
 ```bash
 cd Backendbooking
-npm run lint
-npm run build
-npm test
-npm run test:e2e
-npx prisma validate
-npx prisma generate
+bun run lint
+bun run build
+bun run test
+bun run test:e2e
+bunx prisma validate
+bunx prisma generate
 ```
 
 ## Environment
