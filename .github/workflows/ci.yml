@@ -17,15 +17,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: Backendbooking/package-lock.json
-      - run: npm ci
-      - run: npx prisma generate
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
         env:
           DATABASE_URL: mysql://test:test@localhost:3306/test
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run build
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -37,13 +36,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: Frontendbooking/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run test
+      - run: bun run build
         env:
           BACKEND_API_URL: http://localhost:3000
           APP_URL: http://localhost:3000

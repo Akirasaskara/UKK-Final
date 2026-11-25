@@ -18,20 +18,20 @@ mkdir -p "${WEB_DIR}/releases/${RELEASE_SHA}"
 # 2. Build & Deploy Backend
 echo "--> Mempersiapkan Backend API..."
 cd Backendbooking
-npm ci --silent
-npm run build
-npm prune --omit=dev --silent
+bun install --frozen-lockfile
+bun run build
+bun install --production --frozen-lockfile
 
 cp -r dist "${API_DIR}/releases/${RELEASE_SHA}/"
 cp -r prisma "${API_DIR}/releases/${RELEASE_SHA}/"
 cp package.json "${API_DIR}/releases/${RELEASE_SHA}/"
-cp package-lock.json "${API_DIR}/releases/${RELEASE_SHA}/"
+cp bun.lock "${API_DIR}/releases/${RELEASE_SHA}/"
 cp -r node_modules "${API_DIR}/releases/${RELEASE_SHA}/"
 
 # 3. Database Migration Deployment
-echo "--> Menjalankan Database Migrations (npx prisma migrate deploy)..."
+echo "--> Menjalankan Database Migrations (bunx prisma migrate deploy)..."
 cd "${API_DIR}/releases/${RELEASE_SHA}"
-npx prisma migrate deploy
+bunx prisma migrate deploy
 
 # Update Backend Symlink
 ln -sfn "${API_DIR}/releases/${RELEASE_SHA}" "${API_DIR}/current"
@@ -40,8 +40,8 @@ sudo systemctl restart smart-space-api
 # 4. Build & Deploy Frontend Standalone
 echo "--> Mempersiapkan Frontend Standalone..."
 cd ../../../../Frontendbooking
-npm ci --silent
-npm run build
+bun install --frozen-lockfile
+bun run build
 
 cp -r .next/standalone/* "${WEB_DIR}/releases/${RELEASE_SHA}/"
 cp -r .next/static "${WEB_DIR}/releases/${RELEASE_SHA}/.next/"

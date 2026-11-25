@@ -70,8 +70,10 @@ jobs:
 
             echo "Deploy dir: $APP_DIR"
 
-            # Load NVM / Node.js
+            # Load NVM / Node.js and Bun
             export NVM_DIR="$HOME/.nvm"
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
 
             if [ -s "$NVM_DIR/nvm.sh" ]; then
               . "$NVM_DIR/nvm.sh"
@@ -79,7 +81,7 @@ jobs:
             fi
 
             node --version
-            npm --version
+            bun --version
             pm2 --version
 
             # Sync repository
@@ -98,21 +100,21 @@ jobs:
 
             echo "=== Backend: install dependencies ==="
 
-            test -f package-lock.json
+            test -f bun.lock
 
-            npm ci --no-audit --no-fund
+            bun install --frozen-lockfile
 
             echo "=== Backend: Prisma generate ==="
 
-            npx prisma generate
+            bunx prisma generate
 
             echo "=== Backend: Prisma migrate ==="
 
-            npx prisma migrate deploy
+            bunx prisma migrate deploy
 
             echo "=== Backend: build ==="
 
-            npm run build
+            bun run build
 
             echo "=== Backend: restart PM2 ==="
 
@@ -181,9 +183,9 @@ jobs:
 
             echo "=== Frontend: install dependencies ==="
 
-            test -f package-lock.json
+            test -f bun.lock
 
-            npm ci --no-audit --no-fund
+            bun install --frozen-lockfile
 
             echo "=== Frontend: clean previous build ==="
 
@@ -191,15 +193,21 @@ jobs:
 
             echo "=== Frontend: build ==="
 
-            npm run build
+            bun run build
+
+            echo "=== Frontend: prepare standalone assets ==="
+
+            cp -r .next/static .next/standalone/.next/
+            cp -r public .next/standalone/
 
             echo "=== Frontend: restart PM2 ==="
 
             pm2 delete bookingin-frontend || true
 
-            pm2 start npm \
+            NODE_ENV=production PORT=3001 HOSTNAME=127.0.0.1 pm2 start \
+              "$APP_DIR/Frontendbooking/.next/standalone/server.js" \
               --name bookingin-frontend \
-              -- start -- -p 3001
+              --max-memory-restart 512M
 
             echo "=== Frontend: PM2 status ==="
 
