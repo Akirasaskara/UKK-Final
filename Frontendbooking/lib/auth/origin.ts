@@ -22,10 +22,22 @@ function buildTrustedOrigins(): Set<string> {
 export function isSameOriginRequest(request: NextRequest): boolean {
   const trusted = buildTrustedOrigins();
   const origin = request.headers.get('origin');
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  const proto = request.headers.get('x-forwarded-proto') || 'http';
+
+  const matchesHost = (candidateUrl: string) => {
+    if (!host) return false;
+    return (
+      candidateUrl === `${proto}://${host}` ||
+      candidateUrl === `http://${host}` ||
+      candidateUrl === `https://${host}`
+    );
+  };
 
   if (origin) {
     try {
-      return trusted.has(new URL(origin).origin);
+      const parsedOrigin = new URL(origin).origin;
+      return trusted.has(parsedOrigin) || matchesHost(parsedOrigin);
     } catch {
       return false;
     }
@@ -43,7 +55,8 @@ export function isSameOriginRequest(request: NextRequest): boolean {
   }
 
   try {
-    return trusted.has(new URL(referer).origin);
+    const parsedReferer = new URL(referer).origin;
+    return trusted.has(parsedReferer) || matchesHost(parsedReferer);
   } catch {
     return false;
   }
