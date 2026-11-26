@@ -9,7 +9,7 @@ const optionalText = z
   .transform((value) => (value === '' ? undefined : value))
   .optional();
 
-export const roleSchema = z.enum(['member', 'admin_space']);
+export const roleSchema = z.enum(['member', 'admin_space', 'superadmin']);
 
 export const memberProfileSchema = z.object({
   id: z.number(),
@@ -27,6 +27,7 @@ export const spaceOwnerProfileSchema = z.object({
   telp: z.string(),
   alamat: z.string().nullable().optional(),
   deskripsi_fasilitas: z.string().nullable().optional(),
+  status: z.string().optional(),
 });
 
 export const authProfileSchema = z

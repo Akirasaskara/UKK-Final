@@ -18,7 +18,8 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/api/query-keys';
 import { z } from 'zod';
 
-function profileDestination(profile: AuthProfile): '/member' | '/admin' {
+function profileDestination(profile: AuthProfile): '/member' | '/admin' | '/admin/workspaces' {
+  if (profile.role === 'superadmin') return '/admin/workspaces';
   return profile.role === 'member' ? '/member' : '/admin';
 }
 

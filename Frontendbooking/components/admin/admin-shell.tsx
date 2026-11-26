@@ -12,6 +12,7 @@ import {
   Users,
   BarChart3,
   Building,
+  ShieldCheck,
   Menu,
   X,
   ChevronLeft,
@@ -50,7 +51,18 @@ export function AdminShell({ profile, children }: AdminShellProps) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const logoutMutation = useLogoutMutation();
 
-  const coworkingName = profile.space_owner?.nama_coworking ?? 'Coworking Space';
+  const isSuperadmin = profile.role === 'superadmin';
+  const coworkingName = isSuperadmin
+    ? 'Superadmin Portal'
+    : (profile.space_owner?.nama_coworking ?? 'Coworking Space');
+  const roleSubtitle = isSuperadmin ? 'Verifikasi & Approval' : 'Panel Pengelola';
+
+  const navItems: NavItem[] = isSuperadmin
+    ? [
+        { href: '/admin/workspaces', label: 'Persetujuan Workspace', icon: ShieldCheck, available: true },
+        ...adminNavItems,
+      ]
+    : adminNavItems;
 
   return (
     <div className="min-h-screen bg-bg-canvas text-text-primary flex flex-col lg:flex-row">
@@ -72,7 +84,7 @@ export function AdminShell({ profile, children }: AdminShellProps) {
               {!collapsed ? (
                 <div className="truncate text-left">
                   <p className="font-semibold text-sm leading-tight truncate">{coworkingName}</p>
-                  <p className="text-[11px] text-action-secondary font-medium">Panel Pengelola</p>
+                  <p className="text-[11px] text-action-secondary font-medium">{roleSubtitle}</p>
                 </div>
               ) : null}
             </Link>
@@ -89,7 +101,7 @@ export function AdminShell({ profile, children }: AdminShellProps) {
 
           {/* Navigation Links */}
           <nav aria-label="Navigasi Pengelola" className="flex-1 p-3 space-y-1">
-            {adminNavItems.map((item) => {
+            {navItems.map((item) => {
               const isActive =
                 item.href === '/admin'
                   ? pathname === '/admin'
@@ -178,7 +190,7 @@ export function AdminShell({ profile, children }: AdminShellProps) {
       {mobileDrawerOpen ? (
         <div className="lg:hidden border-b border-border-default bg-bg-surface p-4 shadow-raised space-y-3">
           <nav aria-label="Navigasi Mobile Admin" className="space-y-1">
-            {adminNavItems.map((item) => {
+            {navItems.map((item) => {
               const isActive =
                 item.href === '/admin'
                   ? pathname === '/admin'
@@ -235,6 +247,14 @@ export function AdminShell({ profile, children }: AdminShellProps) {
 
       {/* 3. Main Content Container */}
       <div className="flex-1 flex flex-col min-w-0">
+        {profile.role === 'admin_space' && profile.space_owner?.status === 'pending' ? (
+          <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-3 text-sm text-amber-700 dark:text-amber-300 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-bold">⚠️ Menunggu Persetujuan Superadmin:</span>
+              <span>Pendaftaran coworking space Anda sedang ditinjau. Fasilitas dan ruangan Anda belum tampil di katalog publik hingga pengajuan disetujui.</span>
+            </div>
+          </div>
+        ) : null}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>

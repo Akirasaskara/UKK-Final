@@ -50,8 +50,16 @@ async function resolveUserProfile(currentPath: string): Promise<AuthProfile> {
 
 export async function requireAdminRole(currentPath = '/admin'): Promise<AuthProfile> {
   const profile = await resolveUserProfile(currentPath);
-  if (profile.role !== 'admin_space') {
+  if (profile.role !== 'admin_space' && profile.role !== 'superadmin') {
     redirect('/member');
+  }
+  return profile;
+}
+
+export async function requireSuperadminRole(currentPath = '/admin/workspaces'): Promise<AuthProfile> {
+  const profile = await resolveUserProfile(currentPath);
+  if (profile.role !== 'superadmin') {
+    redirect(profile.role === 'member' ? '/member' : '/admin');
   }
   return profile;
 }
