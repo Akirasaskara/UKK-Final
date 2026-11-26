@@ -44,7 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Profil space owner tidak ditemukan');
     }
 
-    if (user.role !== 'member' && user.role !== 'admin_space') {
+    if (user.role !== 'member' && user.role !== 'admin_space' && user.role !== 'superadmin') {
       throw new UnauthorizedException('Role pengguna tidak valid');
     }
 
