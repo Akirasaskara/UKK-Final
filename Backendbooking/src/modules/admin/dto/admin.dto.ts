@@ -178,3 +178,10 @@ export class ReportSummaryQueryDto {
   @IsNotEmpty({ message: 'Parameter to wajib diisi (format YYYY-MM-DD)' })
   to!: string;
 }
+
+export class UpdateWorkspaceStatusDto {
+  @ApiProperty({ example: 'approved', enum: ['approved', 'rejected'] })
+  @IsString()
+  @IsIn(['approved', 'rejected'], { message: 'Status harus bernilai approved atau rejected' })
+  status!: 'approved' | 'rejected';
+}

@@ -7,10 +7,10 @@ import {
   UseGuards,
   ParseIntPipe,
   Inject,
-  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service.js';
+import { UpdateWorkspaceStatusDto } from './dto/admin.dto.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
@@ -33,11 +33,8 @@ export class SuperadminController {
   @Patch('workspaces/:id/status')
   updateWorkspaceStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body('status') status: string,
+    @Body() dto: UpdateWorkspaceStatusDto,
   ) {
-    if (status !== 'approved' && status !== 'rejected') {
-      throw new BadRequestException('Status harus bernilai "approved" atau "rejected"');
-    }
-    return this.adminService.updateWorkspaceStatus(id, status);
+    return this.adminService.updateWorkspaceStatus(id, dto.status);
   }
 }
