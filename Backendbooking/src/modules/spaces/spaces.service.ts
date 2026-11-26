@@ -50,6 +50,10 @@ export class SpacesService {
   async findAllPublic(tipe?: string, search?: string) {
     const where: any = {
       archivedAt: null,
+      owner: {
+        status: 'approved',
+        archivedAt: null,
+      },
     };
 
     if (tipe) {
@@ -97,6 +101,10 @@ export class SpacesService {
       where: {
         id: BigInt(id),
         archivedAt: null,
+        owner: {
+          status: 'approved',
+          archivedAt: null,
+        },
       },
       include: {
         owner: true,

@@ -143,6 +143,17 @@ async function runSeed() {
 
   const passwordHash = await hashPassword(SEED_DEFAULT_PASSWORD);
 
+  // 3.5. Seed Superadmin
+  await prisma.user.upsert({
+    where: { username: 'superadmin' },
+    update: { passwordHash, role: 'superadmin' },
+    create: {
+      username: 'superadmin',
+      passwordHash,
+      role: 'superadmin',
+    },
+  });
+
   // 4. Seed Owners & Admins
   const ownerMap: Record<string, { userId: bigint; ownerId: bigint; namaCoworking: string; telp: string }> = {};
 
@@ -165,6 +176,7 @@ async function runSeed() {
         telp: o.owner.telp,
         alamat: o.owner.alamat,
         deskripsiFasilitas: o.owner.deskripsiFasilitas,
+        status: (o.owner as any).status ?? 'approved',
       },
       create: {
         idUser: user.id,
@@ -174,6 +186,7 @@ async function runSeed() {
         telp: o.owner.telp,
         alamat: o.owner.alamat,
         deskripsiFasilitas: o.owner.deskripsiFasilitas,
+        status: (o.owner as any).status ?? 'approved',
       },
     });
 
@@ -525,9 +538,12 @@ async function runSeed() {
   console.log('---------------------------------------------');
   console.log('🔑 AKUN TEST & DEVELOPMENT FIXTURES:');
   console.log('Password untuk semua akun: [sesuai SEED_DEFAULT_PASSWORD]');
+  console.log('\n[Superadmin]');
+  console.log('-> Username: superadmin (Akses approval semua workspace)');
   console.log('\n[Admin Space]');
-  console.log('1. Nusa Workhub Malang   -> Username: seed_admin_nusa');
-  console.log('2. Arunika Coworking     -> Username: seed_admin_arunika');
+  console.log('1. Nusa Workhub Malang   -> Username: seed_admin_nusa (Status: approved)');
+  console.log('2. Arunika Coworking     -> Username: seed_admin_arunika (Status: approved)');
+  console.log('3. Brawijaya Hub         -> Username: seed_admin_pending (Status: pending)');
   console.log('\n[Member Global]');
   console.log('1. Andi Saputra (UB)     -> Username: seed_member_andi');
   console.log('2. Sari Puspita (Agency) -> Username: seed_member_sari');

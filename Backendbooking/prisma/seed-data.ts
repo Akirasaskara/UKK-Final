@@ -72,6 +72,23 @@ export function getSeedData(referenceDate: Date) {
         alamat: 'Jl. Diponegoro No. 88, Sisir, Kota Batu, Jawa Timur 65314',
         deskripsiFasilitas:
           'Mountain View Workstation, Ultra-Fast WiFi 200Mbps, AC Inverter, Smart TV 55 Inch untuk Meeting, Whiteboard Kaca, Pantry Lengkap, Outdoor Lounge, Shower Room.',
+        status: 'approved',
+      },
+    },
+    {
+      key: 'brawijaya',
+      user: {
+        username: 'seed_admin_pending',
+        role: 'admin_space',
+      },
+      owner: {
+        namaCoworking: 'Brawijaya Innovation Hub',
+        namaPemilik: 'Dimas Wicaksono, M.Kom.',
+        telp: '0341-700300',
+        alamat: 'Jl. MT Haryono No. 190, Dinoyo, Kota Malang',
+        deskripsiFasilitas:
+          'Ruang kolaborasi mahasiswa, maker space, workstation 24 jam.',
+        status: 'pending',
       },
     },
   ];

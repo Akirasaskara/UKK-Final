@@ -960,4 +960,68 @@ export class AdminService {
       ],
     };
   }
+
+  async listWorkspacesForSuperadmin() {
+    const owners = await this.prisma.spaceOwner.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            createdAt: true,
+          },
+        },
+        _count: {
+          select: {
+            spaces: true,
+            reservations: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return owners.map((o) => ({
+      id: o.id,
+      nama_coworking: o.namaCoworking,
+      nama_pemilik: o.namaPemilik,
+      telp: o.telp,
+      alamat: o.alamat,
+      deskripsi_fasilitas: o.deskripsiFasilitas,
+      status: o.status,
+      created_at: o.createdAt.toISOString(),
+      user: {
+        id: o.user.id,
+        username: o.user.username,
+        created_at: o.user.createdAt.toISOString(),
+      },
+      total_spaces: o._count.spaces,
+      total_reservations: o._count.reservations,
+    }));
+  }
+
+  async updateWorkspaceStatus(id: number, status: 'approved' | 'rejected') {
+    const owner = await this.prisma.spaceOwner.findUnique({
+      where: { id: BigInt(id) },
+    });
+
+    if (!owner) {
+      throw new NotFoundException('Data coworking space tidak ditemukan!');
+    }
+
+    const updated = await this.prisma.spaceOwner.update({
+      where: { id: BigInt(id) },
+      data: { status },
+    });
+
+    return {
+      message: `Status workspace berhasil diubah menjadi ${status}`,
+      data: {
+        id: updated.id,
+        nama_coworking: updated.namaCoworking,
+        status: updated.status,
+        updated_at: updated.updatedAt.toISOString(),
+      },
+    };
+  }
 }

@@ -61,6 +61,7 @@ model SpaceOwner {
   telp               String    @db.VarChar(32)
   alamat             String?   @db.Text
   deskripsiFasilitas String?   @map("deskripsi_fasilitas") @db.Text
+  status             String    @default("approved") @db.VarChar(20)
   createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
   archivedAt         DateTime? @map("archived_at") @db.DateTime(3)

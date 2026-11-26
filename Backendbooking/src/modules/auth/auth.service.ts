@@ -105,6 +105,7 @@ export class AuthService {
           telp: dto.telp,
           alamat: dto.alamat || null,
           deskripsiFasilitas: dto.deskripsi_fasilitas || null,
+          status: 'pending',
         },
       });
 
@@ -127,6 +128,7 @@ export class AuthService {
             telp: spaceOwner.telp,
             alamat: spaceOwner.alamat,
             deskripsi_fasilitas: spaceOwner.deskripsiFasilitas,
+            status: spaceOwner.status,
           },
           access_token: token,
         },
@@ -180,6 +182,7 @@ export class AuthService {
               nama_coworking: user.spaceOwner.namaCoworking,
               nama_pemilik: user.spaceOwner.namaPemilik,
               telp: user.spaceOwner.telp,
+              status: user.spaceOwner.status,
             }
           : null,
         access_token: token,
@@ -222,6 +225,7 @@ export class AuthService {
             telp: profile.spaceOwner.telp,
             alamat: profile.spaceOwner.alamat,
             deskripsi_fasilitas: profile.spaceOwner.deskripsiFasilitas,
+            status: profile.spaceOwner.status,
           }
         : null,
     };
